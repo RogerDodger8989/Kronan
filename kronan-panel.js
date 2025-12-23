@@ -223,36 +223,6 @@ class KronanPanel extends LitElement {
   `;
 
   static properties = {
-    hass: { type: Object },
-    week: { type: Object },
-    weeksData: { type: Object }, // Store all weeks: {'2025-W52': weekObj}
-    currentDate: { type: Object }, // Date object for current view
-    loading: { type: Boolean },
-    newTasks: { type: Object },
-    isEditing: { type: Object }, // {day, id}
-    editData: { type: Object },
-    users: { type: Array },
-    showMoneyModal: { type: Boolean },
-    moneyTab: { type: String },
-    newUserColor: { type: Number },
-    taskLibrary: { type: Array },
-    showTemplateModal: { type: Boolean },
-    templates: { type: Array },
-    draggedItem: { type: Object }, // {item, sourceDay}
-    fileInput: { type: Object },
-    editingUser: { type: Object }, // {id, name, fixedAllowance, defaultColorIndex}
-    editingTask: { type: Object }, // {id, text, value, colorIndex}
-    newTaskColor: { type: Number },
-    showAddTaskModal: { type: Boolean },
-    selectedDay: { type: String },
-    selectedTaskFromLibrary: { type: Object },
-    selectedAssignee: { type: String },
-    completedTasks: { type: Object }, // TODO: Make this week-specific too? For now, global completion or logic needs update?
-    // Actually, completion in this app seems to be just strikethrough in UI.
-    // If we clear week data, completion follows. "completedTasks" object seems to be global map "day-id" -> bool.
-    // Since IDs might conflict if regenerated, or just be unique globally. "generateId" makes random strings.
-    // However, "day-id" key includes day name. "Måndag-ID".
-    // If we switch weeks, "Måndag-ID" lookup might overlap if IDs are reused? No, IDs are random.
     // BUT, "Måndag" is generic.
     // Ideally completedTasks should be part of the week object structure itself to self-contain it.
     // For now, let's keep it global but maybe clear it or namespace it?
@@ -287,8 +257,10 @@ class KronanPanel extends LitElement {
 
   constructor() {
     super();
-    this.currentDate = new Date();
+    console.log("KronanPanel Loaded v2.3 - setConfig Ready");
+    this.week = this._initWeek();
     this.weeksData = {}; // Format: { '2025-W1': { weekData... }, '2025-W2': ... }
+    this.currentDate = new Date();
 
     // Initialize Dark Mode
     const storedTheme = localStorage.getItem('kronan_theme');
