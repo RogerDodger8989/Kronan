@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Kronan - Digital Veckoplanerare v2.0</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      background: #f1f5f9;
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+      overflow-x: hidden;
+    }
+
+    /* Förbättra scroll på touch-enheter */
+    .touch-scroll {
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+
+    .touch-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    .touch-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .touch-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+
+    /* Loading animation */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #f1f5f9;
+      gap: 20px;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #e5e7eb;
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Touch feedback */
+    .touch-feedback:active {
+      opacity: 0.7;
+      transform: scale(0.98);
+    }
+
+    /* Responsive helpers */
+    .mobile-only {
+      display: block;
+    }
+
+    .desktop-only {
+      display: none;
+    }
+
+    @media (min-width: 768px) {
+      .mobile-only {
+        display: none;
+      }
+
+      .desktop-only {
+        display: block;
+      }
+    }
+
+    /* Fullscreen support */
+    :fullscreen {
+      background: #f1f5f9;
+    }
+
+    :-webkit-full-screen {
+      background: #f1f5f9;
+    }
+
+    :-moz-full-screen {
+      background: #f1f5f9;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Loading screen -->
+  <div class="loading" id="loading">
+    <div class="loading-spinner"></div>
+    <div style="text-align: center;">
+      <h2 style="color: #334155; font-weight: bold; margin-bottom: 8px;">Laddar Kronan...</h2>
+      <p style="color: #64748b; font-size: 0.9rem;">Din digitala veckoplanerare</p>
+    </div>
+  </div>
+
+  <!-- Main app container -->
+  <div id="app" style="display: none;">
+    <kronan-panel></kronan-panel>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/lit@3/polyfill-support.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script type="module" src="./kronan-panel.js"></script>
+  <script>
+    // Visa appen när komponenten är redo
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        // Touch-förbättringar
+        if ('ontouchstart' in window) {
+          document.querySelectorAll('button').forEach(btn => {
+            btn.classList.add('touch-feedback');
+          });
+          let lastTouchEnd = 0;
+          document.addEventListener('touchend', (event) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+              event.preventDefault();
+            }
+            lastTouchEnd = now;
+          }, false);
+        }
+      }, 500);
+    });
+  </script>
+
+  <!-- Fallback for older browsers -->
+  <noscript>
+    <div style="padding: 40px; text-align: center;">
+      <h1 style="color: #ef4444; margin-bottom: 20px;">JavaScript krävs</h1>
+      <p>Kronan behöver JavaScript för att fungera. Vänligen aktivera JavaScript i din webbläsare.</p>
+    </div>
+  </noscript>
+
+  <!-- Touch device detection and guidance -->
+  <script>
+    // Detect touch device
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    if (isTouchDevice) {
+      // Add touch guidance
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          if (!localStorage.getItem('kronan_touch_guide_shown')) {
+            alert('💡 Tips för surfplatta/mobil:\n\n' +
+              '• Långtryck (0.5s) på en uppgift för att dra den\n' +
+              '• Aktivera "Touch-kopiera" i footern för att kopiera istället för att flytta\n' +
+              '• Scrolla horisontellt för att se alla dagar på små skärmar\n\n' +
+              'Denna guide visas bara första gången.');
+            localStorage.setItem('kronan_touch_guide_shown', 'true');
+          }
+        }, 1000);
+      });
+    }
+
+    // Handle fullscreen changes
+    document.addEventListener('fullscreenchange', updateFullscreenStatus);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenStatus);
+    document.addEventListener('mozfullscreenchange', updateFullscreenStatus);
+
+    function updateFullscreenStatus() {
+      const isFullscreen = document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement;
+
+      // Update body class for fullscreen styling
+      if (isFullscreen) {
+        document.body.classList.add('fullscreen');
+      } else {
+        document.body.classList.remove('fullscreen');
+      }
+    }
+
+    // Service worker for PWA capabilities (optional)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(error => {
+          console.log('ServiceWorker registration failed:', error);
+        });
+      });
+    }
+  </script>
+</body>
+
+</html>
