@@ -8,6 +8,19 @@
 
 Kronan är en modern, interaktiv digital veckoplanerare designad för hela familjen. Appen kombinerar veckoplanering med ett ekonomiskt belöningssystem och fungerar perfekt på alla enheter. Nu med stöd för Dark Mode, återkommande uppgifter och en marknad för lediga sysslor!
 
+
+## 📸 Skärmbilder
+
+### Översikt & Dark Mode
+| Veckovy (Ljus) | Dark Mode |
+| :---: | :---: |
+| ![Dashboard](screenshots/1_dashboard.png) | ![Dark Mode](screenshots/2_dark_mode.png) |
+
+### Inställningar
+| Återkommande Regler | Utbetalning (Max-knapp) |
+| :---: | :---: |
+| ![Recurring](screenshots/3_recurring.png) | ![Payout](screenshots/4_payout.png) |
+
 ## ✨ Huvudfunktioner
 
 ### 📅 Veckoplanering
