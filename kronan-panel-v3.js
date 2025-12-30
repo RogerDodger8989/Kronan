@@ -228,6 +228,46 @@ class KronanPanel extends LitElement {
       font-size: 1.1rem;
       cursor: pointer;
       margin-left: 4px;
+      margin-left: 4px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 12px;
+      z-index: 10000; /* Extremely high to beat modals */
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-size: 1rem;
+      font-weight: 500;
+      animation: slideUp 0.3s ease;
+    }
+    .toast .actions {
+      display: flex;
+      gap: 8px;
+    }
+    .toast button {
+      background: #475569;
+      border: none;
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .toast button:hover {
+      background: #64748b;
+    }
+    @keyframes slideUp {
+      from { transform: translate(-50%, 20px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
     }
 
     /* Mobile Responsive Adjustments */
@@ -740,7 +780,10 @@ class KronanPanel extends LitElement {
           let weekEarnings = 0;
 
           // A: Veckopeng (Fixed)
-          weekEarnings += Number(user.fixedAllowance || 0);
+          // A: Veckopeng (Fixed) - CHECK DISABLED FLAG
+          if (!weekObj.week || !weekObj.week.allowanceDisabled) {
+            weekEarnings += Number(user.fixedAllowance || 0);
+          }
 
           // B: Tasks
           Object.entries(tasks).forEach(([day, taskList]) => {
