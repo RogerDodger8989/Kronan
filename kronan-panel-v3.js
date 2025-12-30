@@ -327,10 +327,10 @@ class KronanPanel extends LitElement {
 
   constructor() {
     super();
-    console.log("KronanPanel Loaded v2.4 (SYNC FIX) - setConfig Ready");
+    console.log("KronanPanel Loaded v2.5 (RECURRING FIX) - setConfig Ready");
+    this.currentDate = new Date(); // Init first!
     this.week = this._initWeek();
     this.weeksData = {}; // Format: { '2025-W1': { weekData... }, '2025-W2': ... }
-    this.currentDate = new Date();
 
     // Initialize Dark Mode
     const storedTheme = localStorage.getItem('kronan_theme');
@@ -339,7 +339,6 @@ class KronanPanel extends LitElement {
       this.classList.add('dark');
     }
 
-    this.week = this._initWeek();
     this.loading = false;
     this.isFullscreen = false;
     this.newTasks = {};
