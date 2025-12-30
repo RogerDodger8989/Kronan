@@ -944,20 +944,24 @@ class KronanPanel extends LitElement {
     this.loading = true;
     let loaded = false;
 
-    // 1. Försök ladda från Home Assistant (/local/kronan_data.json)
+    // 1. Försök ladda från VÅR EGEN SERVER (/api/data)
     try {
-      const response = await fetch('/local/kronan_data.json?v=' + new Date().getTime());
+      const response = await fetch('/api/data?v=' + new Date().getTime());
       if (response.ok) {
         const parsed = await response.json();
-        this._applyLoadedData(parsed);
-        loaded = true;
-        console.log("Data laddad från HA.");
+        if (Object.keys(parsed).length <= 1 && parsed.created) {
+          console.log("Ny databas hittad.");
+        } else {
+          this._applyLoadedData(parsed);
+          loaded = true;
+          console.log("Data laddad från Server.");
+        }
       }
     } catch (e) {
-      console.log("Kunde inte ladda från HA (körs antagligen standalone).");
+      console.error("Kunde inte ladda från Server:", e);
     }
 
-    // 2. Om HA misslyckades, försök ladda från LocalStorage
+    // 2. Fallback: LocalStorage (Backup)
     if (!loaded) {
       try {
         const local = localStorage.getItem('kronan_data');
@@ -965,65 +969,48 @@ class KronanPanel extends LitElement {
           const parsed = JSON.parse(local);
           this._applyLoadedData(parsed);
           loaded = true;
-          console.log("Data laddad från LocalStorage.");
+          console.log("Data laddad från LocalStorage (Backup).");
         }
       } catch (e) {
         console.error("Fel vid laddning från LocalStorage:", e);
       }
     }
 
-    // 3. Om inget hittades, starta ny vecka
+    // 3. Initiera ny om inget fanns
     if (!loaded) {
       console.log("Ingen sparad data hittades, startar ny.");
       this.week = this._initWeek();
-      // Init weeksData för "nu"
       const currentId = getWeekIdentifier(this.currentDate);
       this.weeksData = { [currentId]: { week: this.week, completedTasks: {} } };
     }
 
-    // Sätt vy till aktuell vecka om `this.week` laddades men inte `weeksData` (gammal data)
-    // Detta hanteras i `_applyLoadedData`
-
     this.loading = false;
   }
 
+  // Helper: processa laddad data
   _applyLoadedData(parsed) {
     if (parsed.users) this.users = parsed.users;
     if (parsed.taskLibrary) this.taskLibrary = parsed.taskLibrary;
     if (parsed.templates) this.templates = parsed.templates;
+    if (parsed.weeksData) this.weeksData = parsed.weeksData;
+    if (parsed.payouts) this.payouts = parsed.payouts;
+    if (parsed.recurringRules) this.recurringRules = parsed.recurringRules;
 
-    // Hantera historik (om den finns)
-    if (parsed.weeksData) {
-      this.weeksData = parsed.weeksData;
-    }
-
-    if (parsed.payouts) {
-      this.payouts = parsed.payouts;
-    }
-
-    if (parsed.recurringRules) {
-      this.recurringRules = parsed.recurringRules;
-    }
-
-    // Hantera gammal data utan historik (migrering)
+    // Migrering av gammal data (utan top-level week)
     if (!this.weeksData || Object.keys(this.weeksData).length === 0) {
-      // Om vi laddade en "gammal" fil som bara hade 'week' och 'completedTasks'
-      // Spara den som "NUVARANDE" vecka
-      const currentId = getWeekIdentifier(new Date()); // Antag att sparad data är "nu"
+      const currentId = getWeekIdentifier(new Date());
       this.weeksData = {
         [currentId]: {
-          week: { ...this._initWeek(), ...(parsed.week || {}) }, // Merge with empty week to ensure 'market' exists
+          week: { ...this._initWeek(), ...(parsed.week || {}) },
           completedTasks: parsed.completedTasks || {}
         }
       };
-
-      // Säkerställ att market finns även om week laddades från gammal fil
       if (this.weeksData[currentId].week && !this.weeksData[currentId].week.market) {
         this.weeksData[currentId].week.market = [];
       }
     }
 
-    // Robust migration: Gå igenom ALL historik och se till att 'market' finns
+    // Se till att market finns i alla historiska veckor
     if (this.weeksData) {
       Object.values(this.weeksData).forEach(data => {
         if (data.week && !data.week.market) {
@@ -1032,22 +1019,17 @@ class KronanPanel extends LitElement {
       });
     }
 
-    // Sätt vyn till currentDate
     this._refreshView();
   }
 
   async _saveData() {
-    // Spara först ner nuvarande vy till weeksData direkt (för att säkerställa att vi har senaste state)
     this._persistCurrentView();
 
-    // Kör resten asynkront i nästa "tick" för att inte blockera UI (knapptryckningar etc)
+    // Kör sparning asynkront
     setTimeout(async () => {
       try {
-        // --- PRUNING: Arkivera och rensa gammal data (behåll ca 10 veckor) ---
         this._cleanupOldData();
-        // ---------------------------------------------------
 
-        // Samla all data vi vill spara
         const dataToSave = {
           weeksData: this.weeksData,
           users: this.users,
@@ -1057,18 +1039,17 @@ class KronanPanel extends LitElement {
           recurringRules: this.recurringRules,
         };
 
-        const dataStr = JSON.stringify(dataToSave);
+        // 1. Spara till SERVER
+        await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dataToSave)
+        });
+        console.log("Data sparad till Server.");
 
-        // 1. Spara till Home Assistant om tillgängligt (utan await för att inte blockera)
-        if (this.hass) {
-          this.hass.callService('shell_command', 'save_kronan_data', {
-            data: dataStr
-          }).catch(e => console.warn("Kunde inte spara till HA (ignorerar):", e));
-        }
+        // 2. Backup LocalStorage
+        localStorage.setItem('kronan_data', JSON.stringify(dataToSave));
 
-        // 2. Spara alltid till LocalStorage
-        localStorage.setItem('kronan_data', dataStr);
-        console.log("Data sparad.");
       } catch (e) {
         console.error("Fel vid sparande av data:", e);
       }
