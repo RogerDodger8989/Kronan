@@ -528,8 +528,41 @@ class KronanPanel extends LitElement {
   }
 
   _deleteUser(id) {
-    this.users = this.users.filter(u => u.id !== id);
-    this._saveData();
+    const user = this.users.find(u => u.id === id);
+    if (user) {
+      if (confirm(`Är du säker på att du vill ta bort ${user.name}? All historik kommer att anonymiseras.`)) {
+        // Anonymize historical tasks to prevent name collision if user is recreated
+        const anonymizedName = `${user.name} (Raderad)`;
+
+        // 1. Current Week
+        Object.keys(this.week).forEach(key => {
+          if (Array.isArray(this.week[key])) {
+            this.week[key].forEach(t => {
+              if (t.assignee === user.name) t.assignee = anonymizedName;
+            });
+          }
+        });
+
+        // 2. Historical Weeks
+        if (this.weeksData) {
+          Object.values(this.weeksData).forEach(data => {
+            if (data.week) {
+              Object.values(data.week).forEach(list => {
+                if (Array.isArray(list)) {
+                  list.forEach(t => {
+                    if (t.assignee === user.name) t.assignee = anonymizedName;
+                  });
+                }
+              });
+            }
+          });
+        }
+
+        // 3. Remove User
+        this.users = this.users.filter(u => u.id !== id);
+        this._saveData();
+      }
+    }
   }
 
   _setNewUserColor(idx) {
