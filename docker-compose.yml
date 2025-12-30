@@ -1,0 +1,7 @@
+services:
+  kronan:
+    build: .
+    container_name: kronan-web
+    restart: unless-stopped
+    ports:
+      - "8095:80"

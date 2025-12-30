@@ -84,7 +84,7 @@ class KronanPanel extends LitElement {
       color: var(--text-primary);
       transition: background 0.3s, color 0.3s;
       overflow-x: hidden;
-      box-sizing: border-box; /* Fixes height calculation */
+      box-sizing: border-box;
     }
     *, *:before, *:after {
       box-sizing: inherit;
@@ -101,13 +101,11 @@ class KronanPanel extends LitElement {
       --bg-footer: #1e293b;
     }
     .main {
-      /* height: 100vh; Force full viewport height */
-      /* overflow-y: auto; Allow scroll only if needed */
       height: 100vh; 
-      overflow-y: hidden; /* Start hidden, app is designed to fit */ 
+      overflow-y: hidden;
       display: flex;
       flex-direction: column;
-      padding: 24px 0 0 0; /* Remove bottom padding, footer is fixed or flex */
+      padding: 24px 0 0 0;
       background: var(--bg-app);
       transition: background 0.3s;
     }
@@ -122,6 +120,7 @@ class KronanPanel extends LitElement {
       display: flex;
       align-items: center;
       gap: 24px;
+      flex-shrink: 0; /* Prevent header from shrinking */
     }
     .crown {
       background: #f59e0b;
@@ -163,13 +162,18 @@ class KronanPanel extends LitElement {
     }
     .week-board {
       width: 100%;
-      height: 100%; /* Fill available height */
+      height: 100%;
       max-width: 100%;
       margin: 0;
       display: flex;
-      gap: 12px; /* Slightly Reduced gap */
-      padding: 0 16px;
-      overflow-x: auto; /* Allow scroll ONLY if it gets unreasonably small, but try to fit */
+      gap: 12px;
+      padding: 0 16px 16px 16px; /* Added bottom padding for scrollbar space */
+      overflow-x: auto; /* Enable horizontal scrolling */
+      overflow-y: hidden; /* Vertical scroll inside columns */
+      align-items: stretch;
+      /* Scroll Snap for nice feel on touch */
+      scroll-snap-type: x mandatory; 
+      -webkit-overflow-scrolling: touch;
     }
     .day-col {
       background: var(--bg-surface);
@@ -177,11 +181,13 @@ class KronanPanel extends LitElement {
       box-shadow: 0 2px 8px var(--shadow-color);
       border: 1px solid var(--border-color);
       padding: 18px 12px 12px 12px;
-      flex: 1; /* Distribute space evenly */
-      min-width: 0; /* Allow shrinking below content size if needed */
+      flex: 1;
+      min-width: 300px; /* Force minimum width to prevent squashing */
+      flex-shrink: 0;   /* Don't let them shrink */
       display: flex;
       flex-direction: column;
-      height: 100%; /* Fill column height */
+      height: 100%;
+      scroll-snap-align: start; /* Snap to start of column */
     }
     .day-header {
       font-weight: bold;
@@ -202,7 +208,7 @@ class KronanPanel extends LitElement {
       font-size: 1rem;
       font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
       font-weight: 500;
-      color: #1e293b; /* Always dark text because cards are pastel */
+      color: #1e293b;
       box-shadow: 0 2px 8px #0001;
       cursor: pointer;
       transition: transform 0.1s;
@@ -219,6 +225,64 @@ class KronanPanel extends LitElement {
       font-size: 1.1rem;
       cursor: pointer;
       margin-left: 4px;
+    }
+
+    /* Mobile Responsive Adjustments */
+    @media (max-width: 768px) {
+      .main {
+        /* Allow main container to scroll vertically if needed (though we aim for fit) */
+        /* But specifically for mobile LANDSCAPE, we often lack height, so we must allow body scroll or better layout */
+        height: 100vh; /* Keep it fixed viewport */
+        padding-top: 12px;
+      }
+      
+      .header {
+        margin: 0 16px 16px 16px;
+        padding: 16px;
+        border-radius: 24px;
+        flex-direction: row; /* Keep row but maybe smaller */
+        flex-wrap: wrap; /* Allow wrapping */
+      }
+      
+      .header-titles h1 {
+        font-size: 1.5rem;
+      }
+      
+      .crown {
+        padding: 10px;
+        border-radius: 12px;
+      }
+
+      /* Adjust day cols for mobile portrait */
+      .day-col {
+        min-width: 85vw; /* On portrait, take up almost full width */
+      }
+    }
+
+    /* Landscape specific tweaks */
+    @media (max-width: 900px) and (orientation: landscape) {
+      .main {
+        padding-top: 8px;
+      }
+      .header {
+        margin: 0 16px 8px 16px;
+        padding: 12px 20px;
+        display: none; /* Hide huge header in landscape mobile to save space? Or just compact it? Let's compact it. */
+        display: flex; 
+      }
+      .header-titles p, .header-titles h2 {
+        display: none; /* Simplify header in landscape mobile */
+      }
+      .header-titles h1 {
+        font-size: 1.2rem;
+        margin: 0;
+      }
+      .crown {
+        padding: 8px; }
+      
+      .day-col {
+        min-width: 280px; /* Good width for landscape columns */
+      }
     }
   `;
 
@@ -1838,4 +1902,4 @@ class KronanPanel extends LitElement {
   }
 }
 
-customElements.define('kronan-panel', KronanPanel);
+customElements.define('kronan-panel-v3', KronanPanel);
