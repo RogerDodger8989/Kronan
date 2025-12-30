@@ -881,7 +881,9 @@ class KronanPanel extends LitElement {
           let shouldAddAllowance = true;
           if (user.createdAt) {
             const weekDate = this._getDateFromWeekId(weekId);
-            if (weekDate && weekDate < user.createdAt - 604800000) { // Buffer 1 week
+            // Integrity Fix: If ID parsing fails (0) or date is older than creation, SKIP allowance.
+            // Fixes "500kr" bug where garbage data was counted.
+            if (!weekDate || (weekDate < user.createdAt - 604800000)) { // Buffer 1 week
               shouldAddAllowance = false;
             }
           }
@@ -2404,22 +2406,20 @@ class KronanPanel extends LitElement {
         ${'' /* Legacy Modal Removed */}
         
         <!-- Toast Notification -->
+        <!-- Toast Notification (Uses class .toast from CSS for Z-Index 10000) -->
         ${this.toast.visible ? html`
-          <div style="position:fixed;top:20px;right:20px;z-index:3000;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.15);padding:16px 20px;display:flex;flex-direction:column;gap:10px;animation:slideIn 0.3s ease-out;border:1px solid #e5e7eb;min-width:300px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <span style="font-weight:600;color:#1e293b;font-size:1rem;">${this.toast.message}</span>
-              ${this.toast.countdown > 0 ? html`
-                <span style="font-size:0.8rem;font-weight:bold;color:#f59e0b;background:#fef3c7;padding:2px 8px;border-radius:10px;">${this.toast.countdown}s</span>
-              ` : ''}
-            </div>
+          <div class="toast">
+            <span>${this.toast.message}</span>
+            ${this.toast.countdown > 0 ? html`
+              <span style="font-size:0.8rem;background:#334155;padding:2px 8px;border-radius:10px;">${this.toast.countdown}s</span>
+            ` : ''}
+            
             ${this.toast.actions.length > 0 ? html`
-              <div style="display:flex;gap:10px;justify-content:flex-end;">
+              <div class="actions">
                 ${this.toast.actions.map(action => html`
                   <button 
                     @click="${action.onClick}" 
-                    style="padding:6px 12px;border-radius:8px;font-size:0.9rem;font-weight:bold;cursor:pointer;border:none;${action.critical
-              ? 'background:#ef4444;color:white;'
-              : 'background:#f1f5f9;color:#334155;'}"
+                    style="${action.critical ? 'background:#ef4444' : ''}"
                   >
                     ${action.label}
                   </button>
@@ -2427,12 +2427,6 @@ class KronanPanel extends LitElement {
               </div>
             ` : ''}
           </div>
-          <style>
-            @keyframes slideIn {
-              from { opacity: 0; transform: translateY(-20px); }
-              to { opacity: 1; transform: translateY(0); }
-            }
-          </style>
         ` : ''}
 
        </div>
