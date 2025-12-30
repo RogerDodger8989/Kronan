@@ -881,9 +881,9 @@ class KronanPanel extends LitElement {
           let shouldAddAllowance = true;
           if (user.createdAt) {
             const weekDate = this._getDateFromWeekId(weekId);
-            // Integrity Fix: If ID parsing fails (0) or date is older than creation, SKIP allowance.
-            // Fixes "500kr" bug where garbage data was counted.
-            if (!weekDate || (weekDate < user.createdAt - 604800000)) { // Buffer 1 week
+            // SAFETY FIX: STRICT check. If week started BEFORE user creation (minus tiny buffer), ignore it.
+            // Fixes "Isak starts with 500kr" bug.
+            if (!weekDate || (weekDate < user.createdAt - 86400000)) { // Buffer 24h
               shouldAddAllowance = false;
             }
           }
@@ -2408,7 +2408,7 @@ class KronanPanel extends LitElement {
         <!-- Toast Notification -->
         <!-- Toast Notification (Uses class .toast from CSS for Z-Index 10000) -->
         ${this.toast.visible ? html`
-          <div class="toast">
+          <div class="toast" style="position:fixed;top:20px;right:20px;bottom:auto;left:auto;transform:none;z-index:99999;pointer-events:auto;">
             <span>${this.toast.message}</span>
             ${this.toast.countdown > 0 ? html`
               <span style="font-size:0.8rem;background:#334155;padding:2px 8px;border-radius:10px;">${this.toast.countdown}s</span>
