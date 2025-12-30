@@ -1569,7 +1569,7 @@ class KronanPanel extends LitElement {
                               `;
           })}
                             <button type="button" 
-                              @click="${() => this.selectedRecurringDays = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']}"
+                              @click="${() => this.selectedRecurringDays = [...DAYS]}"
                               style="padding:6px 10px;border-radius:12px;border:1px solid #c084fc;background:#f3e8ff;color:#6b21a8;font-weight:bold;cursor:pointer;">
                               Alla dagar
                             </button>
