@@ -1541,9 +1541,8 @@ class KronanPanel extends LitElement {
               formData.get('text'),
               formData.get('value'),
               formData.get('icon'),
-              formData.get('assignee'),
-              formData.get('interval') || 'every',
-              formData.get('startOffset') || 'current'
+              formData.get('assignee')
+              // formData.get('interval') and 'startOffset' removed
             );
             this.selectedRecurringDays = []; // Reset days
             e.target.reset();
@@ -1570,26 +1569,15 @@ class KronanPanel extends LitElement {
                                 </button>
                               `;
           })}
+                            <button type="button" 
+                              @click="${() => this.selectedRecurringDays = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']}"
+                              style="padding:6px 10px;border-radius:12px;border:1px solid #c084fc;background:#f3e8ff;color:#6b21a8;font-weight:bold;cursor:pointer;">
+                              Alla dagar
+                            </button>
                           </div>
                         </div>
 
-                        <!-- Interval Settings -->
-                        <div style="display:flex;gap:10px;">
-                            <div style="flex:1;">
-                                <label style="font-size:0.8rem;font-weight:bold;color:#6b21a8;">Intervall</label>
-                                <select name="interval" style="width:100%;padding:8px;border-radius:8px;border:1px solid #c084fc;font-size:0.9rem;">
-                                    <option value="every">Varje vecka</option>
-                                    <option value="biweekly">Varannan vecka</option>
-                                </select>
-                            </div>
-                            <div style="flex:1;">
-                                <label style="font-size:0.8rem;font-weight:bold;color:#6b21a8;">Starta</label>
-                                <select name="startOffset" style="width:100%;padding:8px;border-radius:8px;border:1px solid #c084fc;font-size:0.9rem;">
-                                    <option value="current">Denna vecka</option>
-                                    <option value="next">Nästa vecka</option>
-                                </select>
-                            </div>
-                        </div>
+                        <!-- Interval Settings Removed -->
 
                         <div style="display:flex;gap:10px;">
                           <select name="assignee" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #c084fc;font-size:1rem;">
