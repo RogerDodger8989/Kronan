@@ -601,6 +601,10 @@ class KronanPanel extends LitElement {
 
         // 3. Remove User
         this.users = this.users.filter(u => u.id !== id);
+
+        // Run cleanup to catch any missed items or sync issues
+        this._cleanupOrphans();
+
         this._saveData();
       }
     }
@@ -1000,6 +1004,7 @@ class KronanPanel extends LitElement {
     super.connectedCallback();
     this._loadData().then(() => {
       this._fixDuplicateIds();
+      this._cleanupOrphans();
     });
     document.addEventListener('fullscreenchange', this._handleFullscreenChange.bind(this));
   }
@@ -1186,6 +1191,47 @@ class KronanPanel extends LitElement {
     if (fixNeeded) {
       this._saveData();
     }
+  }
+
+  _cleanupOrphans() {
+    const validNames = new Set(this.users.map(u => u.name));
+    let changed = false;
+
+    // 1. Current Week
+    Object.keys(this.week).forEach(key => {
+      if (Array.isArray(this.week[key])) {
+        this.week[key].forEach(t => {
+          if (t.assignee && !validNames.has(t.assignee) && !t.assignee.includes('(Raderad)')) {
+            // Start strict: Unassign them ? Or mark raderad?
+            // User complained "tasks left on Lilly". Unassigning is cleanest.
+            // But for History, maybe we want to keep record?
+            // Let's mark them (Raderad) so they don't look like active users, but data persists.
+            t.assignee = `${t.assignee} (Raderad)`;
+            changed = true;
+          }
+        });
+      }
+    });
+
+    // 2. Weeks Data
+    if (this.weeksData) {
+      Object.values(this.weeksData).forEach(data => {
+        if (data.week) {
+          Object.values(data.week).forEach(list => {
+            if (Array.isArray(list)) {
+              list.forEach(t => {
+                if (t.assignee && !validNames.has(t.assignee) && !t.assignee.includes('(Raderad)')) {
+                  t.assignee = `${t.assignee} (Raderad)`;
+                  changed = true;
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
+    if (changed) this._saveData();
   }
 
   async _saveData() {
