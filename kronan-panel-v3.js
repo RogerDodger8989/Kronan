@@ -1499,10 +1499,9 @@ class KronanPanel extends LitElement {
   }
 
   _requestResetPayouts() {
-    this._showToast("Vill du nollställa all utbetalningshistorik? (Saldot påverkas ej)", [
-      { label: "Avbryt", onClick: () => { this.toast = { visible: false, message: '', actions: [], countdown: 0 }; this.requestUpdate(); } },
-      { label: "Nollställ", critical: true, onClick: () => this._performResetPayouts() }
-    ]);
+    if (window.confirm("Vill du nollställa all utbetalningshistorik? (Saldot påverkas ej)")) {
+      this._performResetPayouts();
+    }
   }
 
   _performResetPayouts() {
@@ -1600,10 +1599,9 @@ class KronanPanel extends LitElement {
   }
 
   _requestDeleteWeek() {
-    this._showToast('Vill du rensa hela veckan?', [
-      { label: 'Avbryt', onClick: () => this.toast = { visible: false } },
-      { label: 'Radera', onClick: () => this._confirmDeleteWeek(), critical: true }
-    ]);
+    if (window.confirm('Är du säker på att du vill rensa hela veckan?\n(Detta tar bort alla sysslor och nollställer veckopengen för denna vecka).')) {
+      this._confirmDeleteWeek();
+    }
   }
 
   _confirmDeleteWeek() {
