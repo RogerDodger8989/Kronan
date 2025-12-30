@@ -323,929 +323,151 @@ class KronanPanel extends LitElement {
     payoutUser: { type: Object },
     recurringRules: { type: Array },
     selectedRecurringDays: { type: Array },
-  };
+    toast: { type: Object }, // { visible, message, actions: [{label, onClick}], countdown }
+    undoSnapshot: { type: Object }
 
   constructor() {
-    super();
-    console.log("KronanPanel Loaded v2.5 (RECURRING FIX) - setConfig Ready");
-    this.currentDate = new Date(); // Init first!
-    this.week = this._initWeek();
-    this.weeksData = {}; // Format: { '2025-W1': { weekData... }, '2025-W2': ... }
+      super();
+      console.log("KronanPanel Loaded v2.5 (RECURRING FIX) - setConfig Ready");
+      this.currentDate = new Date(); // Init first!
+      this.week = this._initWeek();
+      this.weeksData = {}; // Format: { '2025-W1': { weekData... }, '2025-W2': ... }
 
-    // Initialize Dark Mode
-    const storedTheme = localStorage.getItem('kronan_theme');
-    this.isDarkMode = storedTheme === 'dark';
-    if (this.isDarkMode) {
-      this.classList.add('dark');
+      // Initialize Dark Mode
+      const storedTheme = localStorage.getItem('kronan_theme');
+      this.isDarkMode = storedTheme === 'dark';
+      if (this.isDarkMode) {
+        this.classList.add('dark');
+      }
+
+      this.loading = false;
+      this.isFullscreen = false;
+      this.newTasks = {};
+      DAYS.forEach(day => {
+        this.newTasks[day] = '';
+      });
+
+      this.isEditing = null;
+      this.editData = { text: '', colorIndex: 0 };
+      this.users = [
+        { id: '1', name: 'Isak', fixedAllowance: 20, defaultColorIndex: 0 },
+        { id: '2', name: 'Maja', fixedAllowance: 20, defaultColorIndex: 1 },
+      ];
+      this.showMoneyModal = false;
+      this.moneyTab = 'users';
+      this.newUserColor = 0;
+      this.taskLibrary = [
+        { id: 't1', text: 'Tömma diskmaskin', value: 5, colorIndex: 0 },
+        { id: 't2', text: 'Duka bordet', value: 3, colorIndex: 1 },
+      ];
+      this.showTemplateModal = false;
+      this.templates = [];
+      this.editingUser = null;
+      this.editingTask = null;
+      this.newTaskColor = 0;
+      this.showAddTaskModal = false;
+      this.selectedDay = '';
+      this.selectedTaskFromLibrary = null;
+      this.selectedAssignee = '';
+      this.completedTasks = {};
+      this.showMoveCopyModal = false;
+      this.moveCopyData = null;
+      this.newUserIcon = ICONS[0];
+      this.newTaskIcon = ICONS[0];
+      this.payouts = [];
+      this.showPayoutModal = false;
+      this.payoutUser = null;
+      this.recurringRules = [];
+      this.selectedRecurringDays = [];
+      this.toast = { visible: false, message: '', actions: [] };
+      this.undoSnapshot = null;
+      this.toastTimer = null;
     }
-
-    this.loading = false;
-    this.isFullscreen = false;
-    this.newTasks = {};
-    DAYS.forEach(day => {
-      this.newTasks[day] = '';
-    });
-
-    this.isEditing = null;
-    this.editData = { text: '', colorIndex: 0 };
-    this.users = [
-      { id: '1', name: 'Isak', fixedAllowance: 20, defaultColorIndex: 0 },
-      { id: '2', name: 'Maja', fixedAllowance: 20, defaultColorIndex: 1 },
-    ];
-    this.showMoneyModal = false;
-    this.moneyTab = 'users';
-    this.newUserColor = 0;
-    this.taskLibrary = [
-      { id: 't1', text: 'Tömma diskmaskin', value: 5, colorIndex: 0 },
-      { id: 't2', text: 'Duka bordet', value: 3, colorIndex: 1 },
-    ];
-    this.showTemplateModal = false;
-    this.templates = [];
-    this.editingUser = null;
-    this.editingTask = null;
-    this.newTaskColor = 0;
-    this.showAddTaskModal = false;
-    this.selectedDay = '';
-    this.selectedTaskFromLibrary = null;
-    this.selectedAssignee = '';
-    this.completedTasks = {};
-    this.showMoveCopyModal = false;
-    this.moveCopyData = null;
-    this.newUserIcon = ICONS[0];
-    this.newTaskIcon = ICONS[0];
-    this.payouts = [];
-    this.showPayoutModal = false;
-    this.payoutUser = null;
-    this.recurringRules = [];
-    this.selectedRecurringDays = [];
-  }
 
   firstUpdated() {
-    // Skapa dold filinput för import
-    this.fileInput = document.createElement('input');
-    this.fileInput.type = 'file';
-    this.fileInput.accept = '.json,application/json';
-    this.fileInput.style.display = 'none';
-    this.fileInput.addEventListener('change', e => this._importData(e));
-    this.shadowRoot.appendChild(this.fileInput);
-  }
+      // Skapa dold filinput för import
+      this.fileInput = document.createElement('input');
+      this.fileInput.type = 'file';
+      this.fileInput.accept = '.json,application/json';
+      this.fileInput.style.display = 'none';
+      this.fileInput.addEventListener('change', e => this._importData(e));
+      this.shadowRoot.appendChild(this.fileInput);
+    }
 
   _exportData() {
-    const data = {
-      week: this.week,
-      users: this.users,
-      taskLibrary: this.taskLibrary,
-      templates: this.templates,
-      completedTasks: this.completedTasks
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `kronan_data_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
+      const data = {
+        week: this.week,
+        users: this.users,
+        taskLibrary: this.taskLibrary,
+        templates: this.templates,
+        completedTasks: this.completedTasks
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kronan_data_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
 
   _triggerImport() {
-    if (this.fileInput) this.fileInput.value = '';
-    this.fileInput && this.fileInput.click();
-  }
+      if (this.fileInput) this.fileInput.value = '';
+      this.fileInput && this.fileInput.click();
+    }
 
   _importData(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(event.target.result);
-        if (window.confirm('Detta skriver över all nuvarande data. Fortsätt?')) {
-          if (parsed.week) this.week = parsed.week;
-          if (parsed.users) this.users = parsed.users;
-          if (parsed.taskLibrary) this.taskLibrary = parsed.taskLibrary;
-          if (parsed.templates) this.templates = parsed.templates;
-          if (parsed.completedTasks) this.completedTasks = parsed.completedTasks;
-          this._saveData(); // Spara direkt efter import
-        }
-      } catch (err) { window.alert('Fel vid inläsning.'); }
-    };
-    reader.readAsText(file);
-    e.target.value = null;
-  }
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          if (window.confirm('Detta skriver över all nuvarande data. Fortsätt?')) {
+            if (parsed.week) this.week = parsed.week;
+            if (parsed.users) this.users = parsed.users;
+            if (parsed.taskLibrary) this.taskLibrary = parsed.taskLibrary;
+            if (parsed.templates) this.templates = parsed.templates;
+            if (parsed.completedTasks) this.completedTasks = parsed.completedTasks;
+            this._saveData(); // Spara direkt efter import
+          }
+        } catch (err) { window.alert('Fel vid inläsning.'); }
+      };
+      reader.readAsText(file);
+      e.target.value = null;
+    }
 
   _onDragStart(e, item, day) {
-    this.draggedItem = { item, sourceDay: day };
-    e.dataTransfer.effectAllowed = 'move';
-  }
+      this.draggedItem = { item, sourceDay: day };
+      e.dataTransfer.effectAllowed = 'move';
+    }
 
   _onDrop(e, targetDay) {
-    e.preventDefault();
-    if (!this.draggedItem) return;
-    const { item, sourceDay } = this.draggedItem;
-    if (sourceDay === targetDay) { this.draggedItem = null; return; }
+      e.preventDefault();
+      if (!this.draggedItem) return;
+      const { item, sourceDay } = this.draggedItem;
+      if (sourceDay === targetDay) { this.draggedItem = null; return; }
 
-    // Spara data för modalen
-    this.moveCopyData = { item, sourceDay, targetDay };
-    this.showMoveCopyModal = true;
-  }
+      // Spara data för modalen
+      this.moveCopyData = { item, sourceDay, targetDay };
+      this.showMoveCopyModal = true;
+    }
 
   _onDragOver(e) {
-    e.preventDefault();
-  }
+      e.preventDefault();
+    }
 
   _saveTemplate(name) {
-    if (!name) return;
-    const weekCopy = JSON.parse(JSON.stringify(this.week));
-    this.templates = [
-      ...this.templates,
-      { id: generateId(), name, data: weekCopy }
-    ];
-
-    // Immediately apply to current week
-    const newRule = this.recurringRules[this.recurringRules.length - 1];
-    const targetDays = Array.isArray(newRule.days) ? newRule.days : [newRule.days];
-
-    targetDays.forEach(d => {
-      if (this.week[d] || d === 'market') {
-        const newTask = {
-          id: generateId(),
-          text: newRule.text,
-          value: Number(newRule.value) || 0,
-          icon: newRule.icon || '',
-          assignee: newRule.assignee || undefined
-        };
-        if (d === 'market') {
-          this.week.market = [...this.week.market, newTask];
-        } else {
-          this.week = {
-            ...this.week,
-            [d]: [...this.week[d], newTask]
-          };
-        }
-      }
-    });
-
-    this._saveData();
-  }
-
-  _loadTemplate(template) {
-    const deepCopy = JSON.parse(JSON.stringify(template.data));
-    this.week = deepCopy;
-    this.showTemplateModal = false;
-    this._saveData();
-  }
-
-  _deleteTemplate(id) {
-    this.templates = this.templates.filter(t => t.id !== id);
-    this._saveData();
-  }
-
-  _addUser(name, allowance) {
-    if (!name) return;
-    this.users = [
-      ...this.users,
-      {
-        id: generateId(),
-        name,
-        fixedAllowance: Number(allowance) || 0,
-        defaultColorIndex: this.newUserColor,
-        icon: this.newUserIcon
-      }
-    ];
-    this.newUserColor = Math.floor(Math.random() * 5);
-    this.newUserIcon = ICONS[Math.floor(Math.random() * ICONS.length)];
-    this._saveData();
-  }
-
-  _deleteUser(id) {
-    this.users = this.users.filter(u => u.id !== id);
-    this._saveData();
-  }
-
-  _setNewUserColor(idx) {
-    this.newUserColor = idx;
-  }
-
-  _addTaskToLibrary(text, value) {
-    if (!text) return;
-    this.taskLibrary = [
-      ...this.taskLibrary,
-      {
-        id: generateId(),
-        text,
-        value: Number(value) || 0,
-        // colorIndex remove: uses assignee color
-        icon: this.newTaskIcon
-      }
-    ];
-    this.newTaskIcon = ICONS[Math.floor(Math.random() * ICONS.length)];
-    this._saveData();
-  }
-
-  _deleteTaskFromLibrary(id) {
-    this.taskLibrary = this.taskLibrary.filter(t => t.id !== id);
-    this._saveData();
-  }
-
-  _startEditUser(user) {
-    this.editingUser = { ...user };
-  }
-
-  _saveEditUser() {
-    if (!this.editingUser) return;
-    this.users = this.users.map(u =>
-      u.id === this.editingUser.id ? this.editingUser : u
-    );
-    this.editingUser = null;
-    this._saveData();
-  }
-
-  _startEditTask(task) {
-    this.editingTask = { ...task };
-  }
-
-  _saveEditTask() {
-    if (!this.editingTask) return;
-
-    // Check if we are editing a specific instance (Week Task)
-    if (this.editingTask.day) {
-      const { day, id } = this.editingTask;
-      if (this.week[day]) {
-        this.week = {
-          ...this.week,
-          [day]: this.week[day].map(t =>
-            t.id === id ? {
-              ...t,
-              text: this.editingTask.text,
-              value: Number(this.editingTask.value) || 0,
-              icon: this.editingTask.icon
-            } : t
-          )
-        };
-        // Also update in market if that's where we are
-        if (day === 'market') {
-          this.week = { ...this.week, market: [...this.week.market] };
-        }
-      }
-    } else {
-      // Find match in library (Legacy behavior)
-      this.taskLibrary = this.taskLibrary.map(t =>
-        t.id === this.editingTask.id ? this.editingTask : t
-      );
-    }
-
-    this.editingTask = null;
-    this._saveData();
-  }
-
-  _setEditingUserColor(idx) {
-    if (this.editingUser) {
-      this.editingUser = { ...this.editingUser, defaultColorIndex: idx };
-    }
-  }
-
-  _setEditingUserIcon(icon) {
-    if (this.editingUser) {
-      this.editingUser = { ...this.editingUser, icon: icon };
-    }
-  }
-
-  _setEditingTaskColor(idx) {
-    // Deprecated
-  }
-
-  _setEditingTaskIcon(icon) {
-    if (this.editingTask) {
-      this.editingTask = { ...this.editingTask, icon: icon };
-    }
-  }
-
-  _toggleTaskCompleted(day, id) {
-    const taskKey = `${day}-${id}`;
-    const newCompletedTasks = { ...this.completedTasks };
-
-    if (newCompletedTasks[taskKey]) {
-      delete newCompletedTasks[taskKey];
-    } else {
-      newCompletedTasks[taskKey] = true;
-      // Trigger Confetti!
-      if (window.confetti) {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#fff', '#facc15', '#a855f7', '#ec4899', '#3b82f6'] // Party colors
-        });
-      }
-    }
-
-    this.completedTasks = newCompletedTasks;
-    this._saveData();
-  }
-
-  _handleMoveTask() {
-    if (!this.moveCopyData) return;
-    const { item, sourceDay, targetDay } = this.moveCopyData;
-
-    // Ta bort från källan och lägg till i målet (flytta)
-    const newSource = this.week[sourceDay].filter(i => i.id !== item.id);
-    const newTarget = [...this.week[targetDay], item];
-    this.week = { ...this.week, [sourceDay]: newSource, [targetDay]: newTarget };
-
-    this.showMoveCopyModal = false;
-    this.moveCopyData = null;
-    this.draggedItem = null;
-    this._saveData();
-  }
-
-  _handleCopyTask() {
-    if (!this.moveCopyData) return;
-    const { item, sourceDay, targetDay } = this.moveCopyData;
-
-    // Skapa en kopia med nytt ID
-    const copiedItem = { ...item, id: generateId() };
-    const newTarget = [...this.week[targetDay], copiedItem];
-    this.week = { ...this.week, [targetDay]: newTarget };
-
-    this.showMoveCopyModal = false;
-    this.moveCopyData = null;
-    this.draggedItem = null;
-    this._saveData();
-  }
-
-  _confirmAddTask() {
-    if (!this.selectedTaskFromLibrary || !this.selectedDay) return;
-
-    const newTask = {
-      id: generateId(),
-      libraryId: this.selectedTaskFromLibrary.id, // Store link to library
-      text: this.selectedTaskFromLibrary.text,
-      value: this.selectedTaskFromLibrary.value,
-      // colorIndex removed
-      icon: this.selectedTaskFromLibrary.icon || '',
-      assignee: this.selectedAssignee || undefined
-    };
-
-    this.week = {
-      ...this.week,
-      [this.selectedDay]: [...this.week[this.selectedDay], newTask]
-    };
-
-    this.showAddTaskModal = false;
-    this.selectedDay = '';
-    this.selectedTaskFromLibrary = null;
-    this.selectedAssignee = '';
-    this._saveData();
-  }
-
-  _cleanupOldData() {
-    const KEEP_COUNT = 10;
-    const allWeeks = Object.keys(this.weeksData).sort();
-
-    // 1. Hantera Veckor
-    if (allWeeks.length > KEEP_COUNT) {
-      const weeksToPrune = allWeeks.slice(0, allWeeks.length - KEEP_COUNT);
-      const weeksToKeep = allWeeks.slice(allWeeks.length - KEEP_COUNT);
-      console.log(`Archiving ${weeksToPrune.length} weeks...`);
-
-      weeksToPrune.forEach(weekId => {
-        const weekObj = this.weeksData[weekId];
-        if (!weekObj || !weekObj.week) return;
-
-        const tasks = weekObj.week;
-        const completed = weekObj.completedTasks || {};
-
-        this.users.forEach(user => {
-          let weekEarnings = 0;
-
-          // A: Veckopeng (Fixed)
-          weekEarnings += Number(user.fixedAllowance || 0);
-
-          // B: Tasks
-          Object.entries(tasks).forEach(([day, taskList]) => {
-            if (Array.isArray(taskList)) {
-              taskList.forEach(task => {
-                const taskKey = `${day}-${task.id}`;
-                if (completed[taskKey] && task.assignee === user.name) {
-                  weekEarnings += Number(task.value || 0);
-                }
-              });
-            }
-          });
-
-          // Lägg till i arkivet
-          user.archivedBalance = (user.archivedBalance || 0) + weekEarnings;
-        });
-      });
-
-      // Spara bara de veckor vi ska behålla
-      const prunedData = {};
-      weeksToKeep.forEach(id => {
-        prunedData[id] = this.weeksData[id];
-      });
-      this.weeksData = prunedData;
-    }
-
-    // 2. Hantera Utbetalningar (Behåll 50 senaste)
-    if (this.payouts && this.payouts.length > 50) {
-      const keptPayouts = this.payouts.slice(-50);
-      const removedPayouts = this.payouts.slice(0, this.payouts.length - 50);
-
-      removedPayouts.forEach(p => {
-        const user = this.users.find(u => u.id === p.userId);
-        if (user) {
-          // Dra av utbetalningen från arkivet (eftersom vi tar bort "minusposten" från listan, måste vi minska "nettot")
-          // Total = (ArkivEarned - ArkivPaid) + (CurrEarned - CurrPaid)
-          // Om p flyttas från CurrPaid till ArkivPaid:
-          // ArkivNet -= p
-          user.archivedBalance = (user.archivedBalance || 0) - Number(p.amount);
-        }
-      });
-      this.payouts = keptPayouts;
-    }
-  }
-
-  _calculateTotals() {
-    const totals = {};
-    this.users.forEach(u => {
-      totals[u.name] = {
-        fixed: u.fixedAllowance,
-        tasks: 0,
-        total: u.fixedAllowance,
-        colorIndex: u.defaultColorIndex
-      };
-    });
-
-    // Räkna bara AVKLARADE uppgifter (överstrukna)
-    Object.entries(this.week).forEach(([day, tasks]) => {
-      tasks.forEach(item => {
-        const taskKey = `${day}-${item.id}`;
-        // Om uppgiften ÄR avklarad (överstruken), räkna med den
-        if (this.completedTasks[taskKey] && item.assignee && totals[item.assignee]) {
-          totals[item.assignee].tasks += Number(item.value || 0);
-          totals[item.assignee].total += Number(item.value || 0);
-        }
-      });
-    });
-
-    return totals;
-  }
-
-  _calculateBalance(userId) {
-    // 1. Starta med Arkiverat Saldo (historik som rensats bort)
-    const user = this.users.find(u => u.id === userId);
-    let totalEarned = user && user.archivedBalance ? Number(user.archivedBalance) : 0;
-
-    // NOTERA: archivedBalance är "Netto" (Intäkter - Utbetalningar) för den rensade perioden.
-    // Men för enkelhetens skull i denna funktion räknar vi det som "Intäkt" här, 
-    // och drar av ALLA KVARVARANDE utbetalningar nedan.
-    // Om vi rensar utbetalningar också, måste vi ha dragit av dem från archivedBalance vid rensningstillfället.
-
-    // 2. Summera intäkter från KVARVARANDE historik (Fixed + Tasks)
-    if (this.weeksData) {
-      Object.entries(this.weeksData).forEach(([weekId, weekObj]) => {
-        const tasks = weekObj.week;
-        const completed = weekObj.completedTasks || {};
-
-        if (user) {
-          totalEarned += user.fixedAllowance;
-        }
-
-        if (tasks) {
-          Object.entries(tasks).forEach(([day, taskList]) => {
-            taskList.forEach(task => {
-              const taskKey = `${day}-${task.id}`;
-              if (completed[taskKey] && task.assignee) {
-                const u = this.users.find(usr => usr.name === task.assignee);
-                if (u && u.id === userId) {
-                  totalEarned += Number(task.value || 0);
-                }
-              }
-            });
-          });
-        }
-      });
-    }
-
-    // 3. Summera KVARVARANDE utbetalningar
-    let totalPaid = 0;
-    if (this.payouts) {
-      this.payouts.forEach(p => {
-        if (p.userId === userId) {
-          totalPaid += Number(p.amount || 0);
-        }
-      });
-    }
-
-    return { earned: totalEarned, paid: totalPaid, balance: totalEarned - totalPaid };
-  }
-
-  _registerPayout(userId, amount) {
-    if (!amount || amount <= 0) return;
-    this.payouts = [...this.payouts, {
-      id: generateId(),
-      date: new Date().toISOString(),
-      userId,
-      amount: Number(amount)
-    }];
-    this._saveData();
-  }
-
-  _initWeek() {
-    const week = { market: [] };
-    DAYS.forEach(day => { week[day] = []; });
-
-    // Populate with Recurring Tasks
-    const currentWeekNum = this._getWeekNumber(this.currentDate);
-
-    if (this.recurringRules && this.recurringRules.length > 0) {
-      this.recurringRules.forEach(rule => {
-        // Check Interval Logic
-        let shouldAdd = true;
-        if (rule.interval === 'biweekly') {
-          if (rule.startWeek !== undefined) {
-            // Parity check: (Current - Start) % 2 === 0
-            const diff = currentWeekNum - rule.startWeek;
-            if (Math.abs(diff) % 2 !== 0) {
-              shouldAdd = false;
-            }
-          }
-        }
-        // Note: For 'every', shouldAdd matches default true.
-        // We do not strictly enforce 'next' offset here because _initWeek implies "Current Week".
-        // If rule.startWeek > currentWeekNum (future), maybe we should skip? 
-        // But users might change date on device. Let's keep it simple: Parity check is robust.
-
-        if (shouldAdd) {
-          if (rule.days && Array.isArray(rule.days)) {
-            // New format: Multiple days
-            rule.days.forEach(d => {
-              const newTask = {
-                id: generateId(),
-                text: rule.text,
-                value: Number(rule.value) || 0,
-                icon: rule.icon || '',
-                assignee: rule.assignee || undefined
-              };
-              if (week[d]) {
-                week[d].push(newTask);
-              } else if (d === 'market') {
-                week.market.push(newTask);
-              }
-            });
-          } else if (rule.day) {
-            // Legacy format: Single day
-            const newTask = {
-              id: generateId(),
-              text: rule.text,
-              value: Number(rule.value) || 0,
-              icon: rule.icon || '',
-              assignee: rule.assignee || undefined
-            };
-            if (week[rule.day]) {
-              week[rule.day].push(newTask);
-            } else if (rule.day === 'market') {
-              week.market.push(newTask);
-            }
-          }
-        }
-      });
-    }
-
-    return week;
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    this._loadData();
-    document.addEventListener('fullscreenchange', this._handleFullscreenChange.bind(this));
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    document.removeEventListener('fullscreenchange', this._handleFullscreenChange.bind(this));
-  }
-
-  _handleFullscreenChange() {
-    this.isFullscreen = !!document.fullscreenElement;
-  }
-
-  _toggleDarkMode() {
-    this.isDarkMode = !this.isDarkMode;
-    if (this.isDarkMode) {
-      this.classList.add('dark');
-      localStorage.setItem('kronan_theme', 'dark');
-    } else {
-      this.classList.remove('dark');
-      localStorage.setItem('kronan_theme', 'light');
-    }
-  }
-
-  _toggleFullscreen() {
-    const doc = window.document;
-    const docEl = doc.documentElement;
-
-    const requestFullScreen = docEl.requestFullscreen ||
-      docEl.mozRequestFullScreen ||
-      docEl.webkitRequestFullScreen ||
-      docEl.msRequestFullscreen;
-
-    const cancelFullScreen = doc.exitFullscreen ||
-      doc.mozCancelFullScreen ||
-      doc.webkitExitFullscreen ||
-      doc.msExitFullscreen;
-
-    if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
-      if (requestFullScreen) {
-        requestFullScreen.call(docEl).catch(err => {
-          console.error(`Error attempting to enable fullscreen: ${err.message}`);
-          window.alert(`Kunde inte starta helskärm: ${err.message}\n(Om du kör via Home Assistant kan detta vara begränsat av webbläsaren/appen)`);
-        });
-      } else {
-        window.alert("Helskärm stöds inte av din webbläsare.");
-      }
-    } else {
-      if (cancelFullScreen) {
-        cancelFullScreen.call(doc);
-      }
-    }
-  }
-
-  // --- DATALAGRING (HA + LocalStorage) ---
-  async _loadData() {
-    this.loading = true;
-    let loaded = false;
-
-    // 1. Försök ladda från VÅR EGEN SERVER (/api/data)
-    try {
-      const response = await fetch('/api/data?v=' + new Date().getTime());
-      if (response.ok) {
-        const parsed = await response.json();
-        if (Object.keys(parsed).length <= 1 && parsed.created) {
-          console.log("Ny databas hittad.");
-        } else {
-          this._applyLoadedData(parsed);
-          loaded = true;
-          console.log("Data laddad från Server.");
-        }
-      }
-    } catch (e) {
-      console.error("Kunde inte ladda från Server:", e);
-    }
-
-    // 2. Fallback: LocalStorage (Backup)
-    if (!loaded) {
-      try {
-        const local = localStorage.getItem('kronan_data');
-        if (local) {
-          const parsed = JSON.parse(local);
-          this._applyLoadedData(parsed);
-          loaded = true;
-          console.log("Data laddad från LocalStorage (Backup).");
-        }
-      } catch (e) {
-        console.error("Fel vid laddning från LocalStorage:", e);
-      }
-    }
-
-    // 3. Initiera ny om inget fanns
-    if (!loaded) {
-      console.log("Ingen sparad data hittades, startar ny.");
-      this.week = this._initWeek();
-      const currentId = getWeekIdentifier(this.currentDate);
-      this.weeksData = { [currentId]: { week: this.week, completedTasks: {} } };
-    }
-
-    this.loading = false;
-  }
-
-  // Helper: processa laddad data
-  _applyLoadedData(parsed) {
-    if (parsed.users) this.users = parsed.users;
-    if (parsed.taskLibrary) this.taskLibrary = parsed.taskLibrary;
-    if (parsed.templates) this.templates = parsed.templates;
-    if (parsed.weeksData) this.weeksData = parsed.weeksData;
-    if (parsed.payouts) this.payouts = parsed.payouts;
-    if (parsed.recurringRules) this.recurringRules = parsed.recurringRules;
-
-    // Migrering av gammal data (utan top-level week)
-    if (!this.weeksData || Object.keys(this.weeksData).length === 0) {
-      const currentId = getWeekIdentifier(new Date());
-      this.weeksData = {
-        [currentId]: {
-          week: { ...this._initWeek(), ...(parsed.week || {}) },
-          completedTasks: parsed.completedTasks || {}
-        }
-      };
-      if (this.weeksData[currentId].week && !this.weeksData[currentId].week.market) {
-        this.weeksData[currentId].week.market = [];
-      }
-    }
-
-    // Se till att market finns i alla historiska veckor
-    if (this.weeksData) {
-      Object.values(this.weeksData).forEach(data => {
-        if (data.week && !data.week.market) {
-          data.week.market = [];
-        }
-      });
-    }
-
-    this._refreshView();
-  }
-
-  async _saveData() {
-    this._persistCurrentView();
-    // Force UI update
-    this.requestUpdate();
-
-    // Kör sparning asynkront
-    setTimeout(async () => {
-      try {
-        this._cleanupOldData();
-
-        const dataToSave = {
-          weeksData: this.weeksData,
-          users: this.users,
-          taskLibrary: this.taskLibrary,
-          templates: this.templates,
-          payouts: this.payouts,
-          recurringRules: this.recurringRules,
-        };
-
-        // 1. Spara till SERVER
-        await fetch('/api/data', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dataToSave)
-        });
-        console.log("Data sparad till Server.");
-
-        // 2. Backup LocalStorage
-        localStorage.setItem('kronan_data', JSON.stringify(dataToSave));
-
-      } catch (e) {
-        console.error("Fel vid sparande av data:", e);
-      }
-    }, 0);
-  }
-
-  // --- Navigering ---
-
-  _prevWeek() {
-    this._persistCurrentView(); // Spara undan det vi gjort
-    this.currentDate.setDate(this.currentDate.getDate() - 7);
-    this.currentDate = new Date(this.currentDate); // Trigga uppdatering
-    this._refreshView();
-  }
-
-  _nextWeek() {
-    this._persistCurrentView();
-    this.currentDate.setDate(this.currentDate.getDate() + 7);
-    this.currentDate = new Date(this.currentDate);
-    this._refreshView();
-  }
-
-  _persistCurrentView() {
-    const id = getWeekIdentifier(this.currentDate);
-    this.weeksData = {
-      ...this.weeksData,
-      [id]: {
-        week: this.week,
-        completedTasks: this.completedTasks
-      }
-    };
-  }
-
-  _refreshView() {
-    const id = getWeekIdentifier(this.currentDate);
-    const data = this.weeksData[id];
-
-    if (data) {
-      this.week = data.week;
-      this.completedTasks = data.completedTasks || {};
-    } else {
-      // Ny vecka
-      this.week = this._initWeek();
-      this.completedTasks = {};
-    }
-    this.requestUpdate();
-  }
-
-  _onInput(e, day) {
-    this.newTasks = { ...this.newTasks, [day]: e.target.value };
-  }
-
-  _addTask(day) {
-    this.selectedDay = day;
-    this.selectedTaskFromLibrary = null;
-    this.selectedAssignee = '';
-    this.showAddTaskModal = true;
-  }
-
-  _startEdit(day, id) {
-    const item = this.week[day].find(t => t.id === id);
-    if (!item) return;
-    // Use the new editingTask state for the modern modal
-    this.editingTask = {
-      ...item,
-      day: day // Keep track of which day it belongs to for saving
-    };
-    this.isEditing = null; // Ensure legacy modal doesn't trigger
-  }
-
-  _closeEdit() {
-    this.isEditing = null;
-    this.editData = { text: '', colorIndex: 0, value: '', assignee: '', icon: '' };
-  }
-
-  _saveEdit() {
-    const { day, id } = this.isEditing;
-
-    // --- Two-Way Sync Logic (Board -> Library) ---
-    const currentTask = this.week[day].find(t => t.id === id);
-    if (currentTask) {
-      // 1. Try to find match in library by ID
-      let libraryMatch = this.taskLibrary.find(t => t.id === currentTask.libraryId);
-
-      // 2. Fallback: match by NAME if no ID match (compatibility with old tasks)
-      if (!libraryMatch && currentTask.text) {
-        libraryMatch = this.taskLibrary.find(t => t.text === currentTask.text);
-      }
-
-      if (libraryMatch) {
-        const nameChanged = libraryMatch.text !== this.editData.text;
-        const priceChanged = Number(libraryMatch.value) !== Number(this.editData.value);
-        const iconChanged = libraryMatch.icon !== this.editData.icon;
-
-        if (nameChanged || priceChanged || iconChanged) {
-          if (window.confirm(`Vill du även uppdatera den sparade uppgiften i biblioteket ("${libraryMatch.text}") med dessa ändringar?`)) {
-            this.taskLibrary = this.taskLibrary.map(t => {
-              if (t.id === libraryMatch.id) {
-                return { ...t, text: this.editData.text, value: Number(this.editData.value) || 0, icon: this.editData.icon };
-              }
-              return t;
-            });
-            this.week[day] = this.week[day].map(item =>
-              item.id === id ? { ...item, libraryId: libraryMatch.id } : item
-            );
-          }
-        }
-      }
-    }
-
-    this.week = {
-      ...this.week,
-      [day]: this.week[day].map(item =>
-        item.id === id ? { ...item, ...this.editData } : item
-      )
-    };
-    this._saveData();
-    this._closeEdit();
-  }
-
-  _getWeekNumber(d) {
-    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-    return weekNo;
-  }
-
-  _addRecurringRule(days, text, value, icon, assignee, interval = 'every', startOffset = 'current') {
-    if (!text || !days || days.length === 0) return;
-    const currentWeek = this._getWeekNumber(new Date());
-    let startWeek = currentWeek;
-    if (startOffset === 'next') startWeek = currentWeek + 1;
-
-
-    this.recurringRules = [
-      ...this.recurringRules,
-      {
-        id: generateId(),
-        days: Array.isArray(days) ? days : [days],
-        text,
-        value: Number(value) || 0,
-        icon: icon || '',
-        assignee: assignee || undefined,
-        interval,
-        startWeek
-      }
-    ];
-
-    // Immediately apply check
-    let shouldApply = false;
-    if (startOffset === 'current') {
-      if (interval === 'every') {
-        shouldApply = true;
-      } else if (interval === 'biweekly') {
-        shouldApply = true; // startWeek IS currentWeek, so parity matches
-      }
-    }
-
-    if (shouldApply) {
+      if (!name) return;
+      const weekCopy = JSON.parse(JSON.stringify(this.week));
+      this.templates = [
+        ...this.templates,
+        { id: generateId(), name, data: weekCopy }
+      ];
+
+      // Immediately apply to current week
       const newRule = this.recurringRules[this.recurringRules.length - 1];
       const targetDays = Array.isArray(newRule.days) ? newRule.days : [newRule.days];
 
@@ -1268,72 +490,908 @@ class KronanPanel extends LitElement {
           }
         }
       });
+
+      this._saveData();
     }
 
-    this._saveData();
-  }
+  _loadTemplate(template) {
+      const deepCopy = JSON.parse(JSON.stringify(template.data));
+      this.week = deepCopy;
+      this.showTemplateModal = false;
+      this._saveData();
+    }
+
+  _deleteTemplate(id) {
+      this.templates = this.templates.filter(t => t.id !== id);
+      this._saveData();
+    }
+
+  _addUser(name, allowance) {
+      if (!name) return;
+      this.users = [
+        ...this.users,
+        {
+          id: generateId(),
+          name,
+          fixedAllowance: Number(allowance) || 0,
+          defaultColorIndex: this.newUserColor,
+          icon: this.newUserIcon
+        }
+      ];
+      this.newUserColor = Math.floor(Math.random() * 5);
+      this.newUserIcon = ICONS[Math.floor(Math.random() * ICONS.length)];
+      this._saveData();
+    }
+
+  _deleteUser(id) {
+      this.users = this.users.filter(u => u.id !== id);
+      this._saveData();
+    }
+
+  _setNewUserColor(idx) {
+      this.newUserColor = idx;
+    }
+
+  _addTaskToLibrary(text, value) {
+      if (!text) return;
+      this.taskLibrary = [
+        ...this.taskLibrary,
+        {
+          id: generateId(),
+          text,
+          value: Number(value) || 0,
+          // colorIndex remove: uses assignee color
+          icon: this.newTaskIcon
+        }
+      ];
+      this.newTaskIcon = ICONS[Math.floor(Math.random() * ICONS.length)];
+      this._saveData();
+    }
+
+  _deleteTaskFromLibrary(id) {
+      this.taskLibrary = this.taskLibrary.filter(t => t.id !== id);
+      this._saveData();
+    }
+
+  _startEditUser(user) {
+      this.editingUser = { ...user };
+    }
+
+  _saveEditUser() {
+      if (!this.editingUser) return;
+      this.users = this.users.map(u =>
+        u.id === this.editingUser.id ? this.editingUser : u
+      );
+      this.editingUser = null;
+      this._saveData();
+    }
+
+  _startEditTask(task) {
+      this.editingTask = { ...task };
+    }
+
+  _saveEditTask() {
+      if (!this.editingTask) return;
+
+      // Check if we are editing a specific instance (Week Task)
+      if (this.editingTask.day) {
+        const { day, id } = this.editingTask;
+        if (this.week[day]) {
+          this.week = {
+            ...this.week,
+            [day]: this.week[day].map(t =>
+              t.id === id ? {
+                ...t,
+                text: this.editingTask.text,
+                value: Number(this.editingTask.value) || 0,
+                icon: this.editingTask.icon
+              } : t
+            )
+          };
+          // Also update in market if that's where we are
+          if (day === 'market') {
+            this.week = { ...this.week, market: [...this.week.market] };
+          }
+        }
+      } else {
+        // Find match in library (Legacy behavior)
+        this.taskLibrary = this.taskLibrary.map(t =>
+          t.id === this.editingTask.id ? this.editingTask : t
+        );
+      }
+
+      this.editingTask = null;
+      this._saveData();
+    }
+
+  _setEditingUserColor(idx) {
+      if (this.editingUser) {
+        this.editingUser = { ...this.editingUser, defaultColorIndex: idx };
+      }
+    }
+
+  _setEditingUserIcon(icon) {
+      if (this.editingUser) {
+        this.editingUser = { ...this.editingUser, icon: icon };
+      }
+    }
+
+  _setEditingTaskColor(idx) {
+      // Deprecated
+    }
+
+  _setEditingTaskIcon(icon) {
+      if (this.editingTask) {
+        this.editingTask = { ...this.editingTask, icon: icon };
+      }
+    }
+
+  _toggleTaskCompleted(day, id) {
+      const taskKey = `${day}-${id}`;
+      const newCompletedTasks = { ...this.completedTasks };
+
+      if (newCompletedTasks[taskKey]) {
+        delete newCompletedTasks[taskKey];
+      } else {
+        newCompletedTasks[taskKey] = true;
+        // Trigger Confetti!
+        if (window.confetti) {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#fff', '#facc15', '#a855f7', '#ec4899', '#3b82f6'] // Party colors
+          });
+        }
+      }
+
+      this.completedTasks = newCompletedTasks;
+      this._saveData();
+    }
+
+  _handleMoveTask() {
+      if (!this.moveCopyData) return;
+      const { item, sourceDay, targetDay } = this.moveCopyData;
+
+      // Ta bort från källan och lägg till i målet (flytta)
+      const newSource = this.week[sourceDay].filter(i => i.id !== item.id);
+      const newTarget = [...this.week[targetDay], item];
+      this.week = { ...this.week, [sourceDay]: newSource, [targetDay]: newTarget };
+
+      this.showMoveCopyModal = false;
+      this.moveCopyData = null;
+      this.draggedItem = null;
+      this._saveData();
+    }
+
+  _handleCopyTask() {
+      if (!this.moveCopyData) return;
+      const { item, sourceDay, targetDay } = this.moveCopyData;
+
+      // Skapa en kopia med nytt ID
+      const copiedItem = { ...item, id: generateId() };
+      const newTarget = [...this.week[targetDay], copiedItem];
+      this.week = { ...this.week, [targetDay]: newTarget };
+
+      this.showMoveCopyModal = false;
+      this.moveCopyData = null;
+      this.draggedItem = null;
+      this._saveData();
+    }
+
+  _confirmAddTask() {
+      if (!this.selectedTaskFromLibrary || !this.selectedDay) return;
+
+      const newTask = {
+        id: generateId(),
+        libraryId: this.selectedTaskFromLibrary.id, // Store link to library
+        text: this.selectedTaskFromLibrary.text,
+        value: this.selectedTaskFromLibrary.value,
+        // colorIndex removed
+        icon: this.selectedTaskFromLibrary.icon || '',
+        assignee: this.selectedAssignee || undefined
+      };
+
+      this.week = {
+        ...this.week,
+        [this.selectedDay]: [...this.week[this.selectedDay], newTask]
+      };
+
+      this.showAddTaskModal = false;
+      this.selectedDay = '';
+      this.selectedTaskFromLibrary = null;
+      this.selectedAssignee = '';
+      this._saveData();
+    }
+
+  _cleanupOldData() {
+      const KEEP_COUNT = 10;
+      const allWeeks = Object.keys(this.weeksData).sort();
+
+      // 1. Hantera Veckor
+      if (allWeeks.length > KEEP_COUNT) {
+        const weeksToPrune = allWeeks.slice(0, allWeeks.length - KEEP_COUNT);
+        const weeksToKeep = allWeeks.slice(allWeeks.length - KEEP_COUNT);
+        console.log(`Archiving ${weeksToPrune.length} weeks...`);
+
+        weeksToPrune.forEach(weekId => {
+          const weekObj = this.weeksData[weekId];
+          if (!weekObj || !weekObj.week) return;
+
+          const tasks = weekObj.week;
+          const completed = weekObj.completedTasks || {};
+
+          this.users.forEach(user => {
+            let weekEarnings = 0;
+
+            // A: Veckopeng (Fixed)
+            weekEarnings += Number(user.fixedAllowance || 0);
+
+            // B: Tasks
+            Object.entries(tasks).forEach(([day, taskList]) => {
+              if (Array.isArray(taskList)) {
+                taskList.forEach(task => {
+                  const taskKey = `${day}-${task.id}`;
+                  if (completed[taskKey] && task.assignee === user.name) {
+                    weekEarnings += Number(task.value || 0);
+                  }
+                });
+              }
+            });
+
+            // Lägg till i arkivet
+            user.archivedBalance = (user.archivedBalance || 0) + weekEarnings;
+          });
+        });
+
+        // Spara bara de veckor vi ska behålla
+        const prunedData = {};
+        weeksToKeep.forEach(id => {
+          prunedData[id] = this.weeksData[id];
+        });
+        this.weeksData = prunedData;
+      }
+
+      // 2. Hantera Utbetalningar (Behåll 50 senaste)
+      if (this.payouts && this.payouts.length > 50) {
+        const keptPayouts = this.payouts.slice(-50);
+        const removedPayouts = this.payouts.slice(0, this.payouts.length - 50);
+
+        removedPayouts.forEach(p => {
+          const user = this.users.find(u => u.id === p.userId);
+          if (user) {
+            // Dra av utbetalningen från arkivet (eftersom vi tar bort "minusposten" från listan, måste vi minska "nettot")
+            // Total = (ArkivEarned - ArkivPaid) + (CurrEarned - CurrPaid)
+            // Om p flyttas från CurrPaid till ArkivPaid:
+            // ArkivNet -= p
+            user.archivedBalance = (user.archivedBalance || 0) - Number(p.amount);
+          }
+        });
+        this.payouts = keptPayouts;
+      }
+    }
+
+  _calculateTotals() {
+      const totals = {};
+      this.users.forEach(u => {
+        totals[u.name] = {
+          fixed: u.fixedAllowance,
+          tasks: 0,
+          total: u.fixedAllowance,
+          colorIndex: u.defaultColorIndex
+        };
+      });
+
+      // Räkna bara AVKLARADE uppgifter (överstrukna)
+      Object.entries(this.week).forEach(([day, tasks]) => {
+        tasks.forEach(item => {
+          const taskKey = `${day}-${item.id}`;
+          // Om uppgiften ÄR avklarad (överstruken), räkna med den
+          if (this.completedTasks[taskKey] && item.assignee && totals[item.assignee]) {
+            totals[item.assignee].tasks += Number(item.value || 0);
+            totals[item.assignee].total += Number(item.value || 0);
+          }
+        });
+      });
+
+      return totals;
+    }
+
+  _calculateBalance(userId) {
+      // 1. Starta med Arkiverat Saldo (historik som rensats bort)
+      const user = this.users.find(u => u.id === userId);
+      let totalEarned = user && user.archivedBalance ? Number(user.archivedBalance) : 0;
+
+      // NOTERA: archivedBalance är "Netto" (Intäkter - Utbetalningar) för den rensade perioden.
+      // Men för enkelhetens skull i denna funktion räknar vi det som "Intäkt" här, 
+      // och drar av ALLA KVARVARANDE utbetalningar nedan.
+      // Om vi rensar utbetalningar också, måste vi ha dragit av dem från archivedBalance vid rensningstillfället.
+
+      // 2. Summera intäkter från KVARVARANDE historik (Fixed + Tasks)
+      if (this.weeksData) {
+        Object.entries(this.weeksData).forEach(([weekId, weekObj]) => {
+          const tasks = weekObj.week;
+          const completed = weekObj.completedTasks || {};
+
+          if (user) {
+            totalEarned += user.fixedAllowance;
+          }
+
+          if (tasks) {
+            Object.entries(tasks).forEach(([day, taskList]) => {
+              taskList.forEach(task => {
+                const taskKey = `${day}-${task.id}`;
+                if (completed[taskKey] && task.assignee) {
+                  const u = this.users.find(usr => usr.name === task.assignee);
+                  if (u && u.id === userId) {
+                    totalEarned += Number(task.value || 0);
+                  }
+                }
+              });
+            });
+          }
+        });
+      }
+
+      // 3. Summera KVARVARANDE utbetalningar
+      let totalPaid = 0;
+      if (this.payouts) {
+        this.payouts.forEach(p => {
+          if (p.userId === userId) {
+            totalPaid += Number(p.amount || 0);
+          }
+        });
+      }
+
+      return { earned: totalEarned, paid: totalPaid, balance: totalEarned - totalPaid };
+    }
+
+  _registerPayout(userId, amount) {
+      if (!amount || amount <= 0) return;
+      this.payouts = [...this.payouts, {
+        id: generateId(),
+        date: new Date().toISOString(),
+        userId,
+        amount: Number(amount)
+      }];
+      this._saveData();
+    }
+
+  _initWeek() {
+      const week = { market: [] };
+      DAYS.forEach(day => { week[day] = []; });
+
+      // Populate with Recurring Tasks
+      const currentWeekNum = this._getWeekNumber(this.currentDate);
+
+      if (this.recurringRules && this.recurringRules.length > 0) {
+        this.recurringRules.forEach(rule => {
+          // Check Interval Logic
+          let shouldAdd = true;
+          if (rule.interval === 'biweekly') {
+            if (rule.startWeek !== undefined) {
+              // Parity check: (Current - Start) % 2 === 0
+              const diff = currentWeekNum - rule.startWeek;
+              if (Math.abs(diff) % 2 !== 0) {
+                shouldAdd = false;
+              }
+            }
+          }
+          // Note: For 'every', shouldAdd matches default true.
+          // We do not strictly enforce 'next' offset here because _initWeek implies "Current Week".
+          // If rule.startWeek > currentWeekNum (future), maybe we should skip? 
+          // But users might change date on device. Let's keep it simple: Parity check is robust.
+
+          if (shouldAdd) {
+            if (rule.days && Array.isArray(rule.days)) {
+              // New format: Multiple days
+              rule.days.forEach(d => {
+                const newTask = {
+                  id: generateId(),
+                  text: rule.text,
+                  value: Number(rule.value) || 0,
+                  icon: rule.icon || '',
+                  assignee: rule.assignee || undefined
+                };
+                if (week[d]) {
+                  week[d].push(newTask);
+                } else if (d === 'market') {
+                  week.market.push(newTask);
+                }
+              });
+            } else if (rule.day) {
+              // Legacy format: Single day
+              const newTask = {
+                id: generateId(),
+                text: rule.text,
+                value: Number(rule.value) || 0,
+                icon: rule.icon || '',
+                assignee: rule.assignee || undefined
+              };
+              if (week[rule.day]) {
+                week[rule.day].push(newTask);
+              } else if (rule.day === 'market') {
+                week.market.push(newTask);
+              }
+            }
+          }
+        });
+      }
+
+      return week;
+    }
+
+  connectedCallback() {
+      super.connectedCallback();
+      this._loadData();
+      document.addEventListener('fullscreenchange', this._handleFullscreenChange.bind(this));
+    }
+
+  disconnectedCallback() {
+      super.disconnectedCallback();
+      document.removeEventListener('fullscreenchange', this._handleFullscreenChange.bind(this));
+    }
+
+  _handleFullscreenChange() {
+      this.isFullscreen = !!document.fullscreenElement;
+    }
+
+  _toggleDarkMode() {
+      this.isDarkMode = !this.isDarkMode;
+      if (this.isDarkMode) {
+        this.classList.add('dark');
+        localStorage.setItem('kronan_theme', 'dark');
+      } else {
+        this.classList.remove('dark');
+        localStorage.setItem('kronan_theme', 'light');
+      }
+    }
+
+  _toggleFullscreen() {
+      const doc = window.document;
+      const docEl = doc.documentElement;
+
+      const requestFullScreen = docEl.requestFullscreen ||
+        docEl.mozRequestFullScreen ||
+        docEl.webkitRequestFullScreen ||
+        docEl.msRequestFullscreen;
+
+      const cancelFullScreen = doc.exitFullscreen ||
+        doc.mozCancelFullScreen ||
+        doc.webkitExitFullscreen ||
+        doc.msExitFullscreen;
+
+      if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+        if (requestFullScreen) {
+          requestFullScreen.call(docEl).catch(err => {
+            console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            window.alert(`Kunde inte starta helskärm: ${err.message}\n(Om du kör via Home Assistant kan detta vara begränsat av webbläsaren/appen)`);
+          });
+        } else {
+          window.alert("Helskärm stöds inte av din webbläsare.");
+        }
+      } else {
+        if (cancelFullScreen) {
+          cancelFullScreen.call(doc);
+        }
+      }
+    }
+
+  // --- DATALAGRING (HA + LocalStorage) ---
+  async _loadData() {
+      this.loading = true;
+      let loaded = false;
+
+      // 1. Försök ladda från VÅR EGEN SERVER (/api/data)
+      try {
+        const response = await fetch('/api/data?v=' + new Date().getTime());
+        if (response.ok) {
+          const parsed = await response.json();
+          if (Object.keys(parsed).length <= 1 && parsed.created) {
+            console.log("Ny databas hittad.");
+          } else {
+            this._applyLoadedData(parsed);
+            loaded = true;
+            console.log("Data laddad från Server.");
+          }
+        }
+      } catch (e) {
+        console.error("Kunde inte ladda från Server:", e);
+      }
+
+      // 2. Fallback: LocalStorage (Backup)
+      if (!loaded) {
+        try {
+          const local = localStorage.getItem('kronan_data');
+          if (local) {
+            const parsed = JSON.parse(local);
+            this._applyLoadedData(parsed);
+            loaded = true;
+            console.log("Data laddad från LocalStorage (Backup).");
+          }
+        } catch (e) {
+          console.error("Fel vid laddning från LocalStorage:", e);
+        }
+      }
+
+      // 3. Initiera ny om inget fanns
+      if (!loaded) {
+        console.log("Ingen sparad data hittades, startar ny.");
+        this.week = this._initWeek();
+        const currentId = getWeekIdentifier(this.currentDate);
+        this.weeksData = { [currentId]: { week: this.week, completedTasks: {} } };
+      }
+
+      this.loading = false;
+    }
+
+  // Helper: processa laddad data
+  _applyLoadedData(parsed) {
+      if (parsed.users) this.users = parsed.users;
+      if (parsed.taskLibrary) this.taskLibrary = parsed.taskLibrary;
+      if (parsed.templates) this.templates = parsed.templates;
+      if (parsed.weeksData) this.weeksData = parsed.weeksData;
+      if (parsed.payouts) this.payouts = parsed.payouts;
+      if (parsed.recurringRules) this.recurringRules = parsed.recurringRules;
+
+      // Migrering av gammal data (utan top-level week)
+      if (!this.weeksData || Object.keys(this.weeksData).length === 0) {
+        const currentId = getWeekIdentifier(new Date());
+        this.weeksData = {
+          [currentId]: {
+            week: { ...this._initWeek(), ...(parsed.week || {}) },
+            completedTasks: parsed.completedTasks || {}
+          }
+        };
+        if (this.weeksData[currentId].week && !this.weeksData[currentId].week.market) {
+          this.weeksData[currentId].week.market = [];
+        }
+      }
+
+      // Se till att market finns i alla historiska veckor
+      if (this.weeksData) {
+        Object.values(this.weeksData).forEach(data => {
+          if (data.week && !data.week.market) {
+            data.week.market = [];
+          }
+        });
+      }
+
+      this._refreshView();
+    }
+
+  async _saveData() {
+      this._persistCurrentView();
+      // Force UI update
+      this.requestUpdate();
+
+      // Kör sparning asynkront
+      setTimeout(async () => {
+        try {
+          this._cleanupOldData();
+
+          const dataToSave = {
+            weeksData: this.weeksData,
+            users: this.users,
+            taskLibrary: this.taskLibrary,
+            templates: this.templates,
+            payouts: this.payouts,
+            recurringRules: this.recurringRules,
+          };
+
+          // 1. Spara till SERVER
+          await fetch('/api/data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataToSave)
+          });
+          console.log("Data sparad till Server.");
+
+          // 2. Backup LocalStorage
+          localStorage.setItem('kronan_data', JSON.stringify(dataToSave));
+
+        } catch (e) {
+          console.error("Fel vid sparande av data:", e);
+        }
+      }, 0);
+    }
+
+  // --- Navigering ---
+
+  _prevWeek() {
+      this._persistCurrentView(); // Spara undan det vi gjort
+      this.currentDate.setDate(this.currentDate.getDate() - 7);
+      this.currentDate = new Date(this.currentDate); // Trigga uppdatering
+      this._refreshView();
+    }
+
+  _nextWeek() {
+      this._persistCurrentView();
+      this.currentDate.setDate(this.currentDate.getDate() + 7);
+      this.currentDate = new Date(this.currentDate);
+      this._refreshView();
+    }
+
+  _persistCurrentView() {
+      const id = getWeekIdentifier(this.currentDate);
+      this.weeksData = {
+        ...this.weeksData,
+        [id]: {
+          week: this.week,
+          completedTasks: this.completedTasks
+        }
+      };
+    }
+
+  _refreshView() {
+      const id = getWeekIdentifier(this.currentDate);
+      const data = this.weeksData[id];
+
+      if (data) {
+        this.week = data.week;
+        this.completedTasks = data.completedTasks || {};
+      } else {
+        // Ny vecka
+        this.week = this._initWeek();
+        this.completedTasks = {};
+      }
+      this.requestUpdate();
+    }
+
+  _onInput(e, day) {
+      this.newTasks = { ...this.newTasks, [day]: e.target.value };
+    }
+
+  _addTask(day) {
+      this.selectedDay = day;
+      this.selectedTaskFromLibrary = null;
+      this.selectedAssignee = '';
+      this.showAddTaskModal = true;
+    }
+
+  _startEdit(day, id) {
+      const item = this.week[day].find(t => t.id === id);
+      if (!item) return;
+      // Use the new editingTask state for the modern modal
+      this.editingTask = {
+        ...item,
+        day: day // Keep track of which day it belongs to for saving
+      };
+      this.isEditing = null; // Ensure legacy modal doesn't trigger
+    }
+
+  _closeEdit() {
+      this.isEditing = null;
+      this.editData = { text: '', colorIndex: 0, value: '', assignee: '', icon: '' };
+    }
+
+  _saveEdit() {
+      const { day, id } = this.isEditing;
+
+      // --- Two-Way Sync Logic (Board -> Library) ---
+      const currentTask = this.week[day].find(t => t.id === id);
+      if (currentTask) {
+        // 1. Try to find match in library by ID
+        let libraryMatch = this.taskLibrary.find(t => t.id === currentTask.libraryId);
+
+        // 2. Fallback: match by NAME if no ID match (compatibility with old tasks)
+        if (!libraryMatch && currentTask.text) {
+          libraryMatch = this.taskLibrary.find(t => t.text === currentTask.text);
+        }
+
+        if (libraryMatch) {
+          const nameChanged = libraryMatch.text !== this.editData.text;
+          const priceChanged = Number(libraryMatch.value) !== Number(this.editData.value);
+          const iconChanged = libraryMatch.icon !== this.editData.icon;
+
+          if (nameChanged || priceChanged || iconChanged) {
+            if (window.confirm(`Vill du även uppdatera den sparade uppgiften i biblioteket ("${libraryMatch.text}") med dessa ändringar?`)) {
+              this.taskLibrary = this.taskLibrary.map(t => {
+                if (t.id === libraryMatch.id) {
+                  return { ...t, text: this.editData.text, value: Number(this.editData.value) || 0, icon: this.editData.icon };
+                }
+                return t;
+              });
+              this.week[day] = this.week[day].map(item =>
+                item.id === id ? { ...item, libraryId: libraryMatch.id } : item
+              );
+            }
+          }
+        }
+      }
+
+      this.week = {
+        ...this.week,
+        [day]: this.week[day].map(item =>
+          item.id === id ? { ...item, ...this.editData } : item
+        )
+      };
+      this._saveData();
+      this._closeEdit();
+    }
+
+  _getWeekNumber(d) {
+      d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return weekNo;
+    }
+
+  _addRecurringRule(days, text, value, icon, assignee, interval = 'every', startOffset = 'current') {
+      if (!text || !days || days.length === 0) return;
+      const currentWeek = this._getWeekNumber(new Date());
+      let startWeek = currentWeek;
+      if (startOffset === 'next') startWeek = currentWeek + 1;
+
+
+      this.recurringRules = [
+        ...this.recurringRules,
+        {
+          id: generateId(),
+          days: Array.isArray(days) ? days : [days],
+          text,
+          value: Number(value) || 0,
+          icon: icon || '',
+          assignee: assignee || undefined,
+          interval,
+          startWeek
+        }
+      ];
+
+      // Immediately apply check
+      let shouldApply = false;
+      if (startOffset === 'current') {
+        if (interval === 'every') {
+          shouldApply = true;
+        } else if (interval === 'biweekly') {
+          shouldApply = true; // startWeek IS currentWeek, so parity matches
+        }
+      }
+
+      if (shouldApply) {
+        const newRule = this.recurringRules[this.recurringRules.length - 1];
+        const targetDays = Array.isArray(newRule.days) ? newRule.days : [newRule.days];
+
+        targetDays.forEach(d => {
+          if (this.week[d] || d === 'market') {
+            const newTask = {
+              id: generateId(),
+              text: newRule.text,
+              value: Number(newRule.value) || 0,
+              icon: newRule.icon || '',
+              assignee: newRule.assignee || undefined
+            };
+            if (d === 'market') {
+              this.week.market = [...this.week.market, newTask];
+            } else {
+              this.week = {
+                ...this.week,
+                [d]: [...this.week[d], newTask]
+              };
+            }
+          }
+        });
+      }
+
+      this._saveData();
+    }
 
 
 
   _deleteRecurringRule(id) {
-    this.recurringRules = this.recurringRules.filter(r => r.id !== id);
-    this._saveData();
-  }
+      this.recurringRules = this.recurringRules.filter(r => r.id !== id);
+      this._saveData();
+    }
 
   _deleteTask(day, id) {
-    this.week = { ...this.week, [day]: this.week[day].filter(t => t.id !== id) };
-    this._saveData();
-    if (this.isEditing && this.isEditing.day === day && this.isEditing.id === id) {
-      this._closeEdit();
+      this.week = { ...this.week, [day]: this.week[day].filter(t => t.id !== id) };
+      this._saveData();
+      if (this.isEditing && this.isEditing.day === day && this.isEditing.id === id) {
+        this._closeEdit();
+      }
     }
-  }
 
   _deleteAllStrict(text, assignee) {
-    if (!text) return;
-    const confirmMsg = assignee
-      ? `Är du säker på att du vill radera ALLA uppgifter med namnet "${text}" OCH personen "${assignee}" från hela veckovyn?`
-      : `Är du säker på att du vill radera ALLA uppgifter med namnet "${text}" (oavsett person) från hela veckovyn?`;
+      if (!text) return;
+      const confirmMsg = assignee
+        ? `Är du säker på att du vill radera ALLA uppgifter med namnet "${text}" OCH personen "${assignee}" från hela veckovyn?`
+        : `Är du säker på att du vill radera ALLA uppgifter med namnet "${text}" (oavsett person) från hela veckovyn?`;
 
-    if (confirm(confirmMsg)) {
-      const newWeek = { ...this.week };
-      DAYS.forEach(day => {
-        if (newWeek[day]) {
-          newWeek[day] = newWeek[day].filter(t => {
+      if (confirm(confirmMsg)) {
+        const newWeek = { ...this.week };
+        DAYS.forEach(day => {
+          if (newWeek[day]) {
+            newWeek[day] = newWeek[day].filter(t => {
+              const nameMatch = t.text === text;
+              const assigneeMatch = assignee ? t.assignee === assignee : true;
+              return !(nameMatch && assigneeMatch);
+            });
+          }
+        });
+        // Also check market
+        if (newWeek.market) {
+          newWeek.market = newWeek.market.filter(t => {
             const nameMatch = t.text === text;
             const assigneeMatch = assignee ? t.assignee === assignee : true;
             return !(nameMatch && assigneeMatch);
           });
         }
-      });
-      // Also check market
-      if (newWeek.market) {
-        newWeek.market = newWeek.market.filter(t => {
-          const nameMatch = t.text === text;
-          const assigneeMatch = assignee ? t.assignee === assignee : true;
-          return !(nameMatch && assigneeMatch);
-        });
+        this.week = newWeek;
+        this._saveData();
+        this.editingTask = null; // Close modal
       }
-      this.week = newWeek;
-      this._saveData();
-      this.editingTask = null; // Close modal
     }
-  }
 
   _onEditInput(e, field) {
-    this.editData = { ...this.editData, [field]: e.target.value };
-  }
+      this.editData = { ...this.editData, [field]: e.target.value };
+    }
 
   _setEditColor(idx) {
-    // Deprecated
-  }
+      // Deprecated
+    }
 
   _setEditIcon(icon) {
-    this.editData = { ...this.editData, icon: icon };
-  }
+      this.editData = { ...this.editData, icon: icon };
+    }
+
+  // --- Toast & Delete Week Logic ---
+
+  _showToast(message, actions = [], countdown = 0) {
+      this.toast = { visible: true, message, actions, countdown };
+      // Clear previous timer if any
+      if (this.toastTimer) clearInterval(this.toastTimer);
+
+      if (countdown > 0) {
+        this.toastTimer = setInterval(() => {
+          if (this.toast.countdown > 1) {
+            this.toast = { ...this.toast, countdown: this.toast.countdown - 1 };
+          } else {
+            clearInterval(this.toastTimer);
+            this.toast = { visible: false, message: '', actions: [] };
+            this.undoSnapshot = null; // Clear undo capability
+          }
+        }, 1000);
+      }
+    }
+
+  _requestDeleteWeek() {
+      this._showToast('Vill du rensa hela veckan?', [
+        { label: 'Avbryt', onClick: () => this.toast = { visible: false } },
+        { label: 'Radera', onClick: () => this._confirmDeleteWeek(), critical: true }
+      ]);
+    }
+
+  _confirmDeleteWeek() {
+      // Snapshot
+      this.undoSnapshot = JSON.parse(JSON.stringify(this.week));
+
+      // Clear
+      const emptyWeek = { market: [] };
+      DAYS.forEach(d => emptyWeek[d] = []);
+      this.week = emptyWeek;
+      this._saveData();
+
+      // Show Undo Toast
+      this._showToast('Veckan raderad', [
+        { label: 'Ångra', onClick: () => this._restoreWeek() }
+      ], 5);
+    }
+
+  _restoreWeek() {
+      if (this.undoSnapshot) {
+        this.week = this.undoSnapshot;
+        this._saveData();
+        this.undoSnapshot = null;
+        if (this.toastTimer) clearInterval(this.toastTimer);
+        this._showToast('Veckan återställd!');
+        setTimeout(() => this.toast = { visible: false }, 3000);
+      }
+    }
 
   render() {
-    const totals = this._calculateTotals();
-    return html`
+      const totals = this._calculateTotals();
+      return html`
       <div class="main">
         <header class="header">
           <div class="crown">${this._crownIcon()}</div>
@@ -1345,8 +1403,8 @@ class KronanPanel extends LitElement {
                 <h1 style="margin:0;font-size:1.8rem;color:var(--text-primary);display:flex;align-items:center;gap:10px;">
                   Vecka ${getWeekNumber(this.currentDate)}
                   ${getWeekIdentifier(this.currentDate) === getWeekIdentifier(new Date())
-        ? html`<span style="background:#10b981;color:#fff;font-size:0.9rem;padding:2px 8px;border-radius:12px;font-weight:bold;vertical-align:middle;">NU</span>`
-        : ''}
+          ? html`<span style="background:#10b981;color:#fff;font-size:0.9rem;padding:2px 8px;border-radius:12px;font-weight:bold;vertical-align:middle;">NU</span>`
+          : ''}
                 </h1>
                 <p style="margin:0;color:var(--text-secondary);font-size:0.95rem;font-weight:500;">
                   ${getWeekRange(this.currentDate)}
@@ -1363,6 +1421,7 @@ class KronanPanel extends LitElement {
             <button @click="${() => this._toggleFullscreen()}" style="background:var(--bg-surface);border:1px solid var(--border-color);color:var(--text-secondary);padding:8px;border-radius:12px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="${this.isFullscreen ? 'Avsluta helskärm' : 'Helskärm'}">
               ${this.isFullscreen ? '↙️' : '⛶'}
             </button>
+            <button style="background:#ef4444;color:#fff;padding:8px 18px;border-radius:12px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;" @click="${() => this._requestDeleteWeek()}">Radera vecka</button>
             <button style="background:#10b981;color:#fff;padding:8px 18px;border-radius:12px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;" @click="${() => { this.showMoneyModal = true; this.moneyTab = 'users'; }}">Inställningar</button>
           </div>
 
@@ -1492,8 +1551,8 @@ class KronanPanel extends LitElement {
                     <div style="display:flex;flex-direction:column;gap:16px;">
                       <h4 style="font-weight:bold;color:#1e293b;font-size:1rem;margin-bottom:6px;">Saldo & Utbetalning</h4>
                       ${this.users.map(u => {
-          const bal = this._calculateBalance(u.id);
-          return html`
+            const bal = this._calculateBalance(u.id);
+            return html`
                           <div style="background:#fff;padding:16px;border-radius:14px;border:1px solid #e5e7eb;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                               <div style="display:flex;align-items:center;gap:10px;">
@@ -1504,9 +1563,9 @@ class KronanPanel extends LitElement {
                                 </div>
                               </div>
                               <button @click="${() => {
-              this.payoutUser = u;
-              this.showPayoutModal = true;
-            }}" style="background:#ef4444;color:#fff;padding:6px 14px;border-radius:8px;border:none;font-weight:bold;cursor:pointer;">Betala ut</button>
+                this.payoutUser = u;
+                this.showPayoutModal = true;
+              }}" style="background:#ef4444;color:#fff;padding:6px 14px;border-radius:8px;border:none;font-weight:bold;cursor:pointer;">Betala ut</button>
                             </div>
                             <div style="display:flex;gap:12px;font-size:0.85rem;background:#f8fafc;padding:8px;border-radius:8px;">
                               <div style="flex:1;">
@@ -1520,20 +1579,20 @@ class KronanPanel extends LitElement {
                             </div>
                           </div>
                         `;
-        })}
+          })}
                       
                       <div style="margin-top:12px;">
                         <h4 style="font-weight:bold;color:#64748b;font-size:0.9rem;margin-bottom:8px;">Senaste utbetalningar</h4>
                         ${this.payouts.slice().reverse().slice(0, 5).map(p => {
-          const u = this.users.find(usr => usr.id === p.userId);
-          return html`
+            const u = this.users.find(usr => usr.id === p.userId);
+            return html`
                             <div style="display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:6px 0;font-size:0.9rem;">
                               <span style="color:var(--text-primary);">${u ? u.name : 'Okänd'}</span>
                               <span style="color:#64748b;">${p.date.slice(0, 10)}</span>
                               <span style="font-weight:bold;color:#ef4444;">-${p.amount} kr</span>
                             </div>
                           `;
-        })}
+          })}
                         ${this.payouts.length === 0 ? html`<div style="color:#94a3b8;font-size:0.9rem;">Inga utbetalningar registrerade än.</div>` : ''}
                       </div>
                     </div>
@@ -1541,45 +1600,45 @@ class KronanPanel extends LitElement {
                     <div style="background:#f3e8ff;padding:18px;border-radius:14px;margin-bottom:18px;">
                       <h4 style="font-weight:bold;color:#6b21a8;font-size:1rem;margin-bottom:10px;">Skapa regel</h4>
                       <form @submit="${e => {
-            e.preventDefault();
-            if (this.selectedRecurringDays.length === 0) {
-              alert('Välj minst en dag!');
-              return;
-            }
-            const formData = new FormData(e.target);
-            this._addRecurringRule(
-              this.selectedRecurringDays, // Pass array
-              formData.get('text'),
-              formData.get('value'),
-              formData.get('icon'),
-              formData.get('assignee')
-              // formData.get('interval') and 'startOffset' removed
-            );
-            this.selectedRecurringDays = []; // Reset days
-            e.target.reset();
-          }}" style="display:flex;flex-direction:column;gap:10px;">
+              e.preventDefault();
+              if (this.selectedRecurringDays.length === 0) {
+                alert('Välj minst en dag!');
+                return;
+              }
+              const formData = new FormData(e.target);
+              this._addRecurringRule(
+                this.selectedRecurringDays, // Pass array
+                formData.get('text'),
+                formData.get('value'),
+                formData.get('icon'),
+                formData.get('assignee')
+                // formData.get('interval') and 'startOffset' removed
+              );
+              this.selectedRecurringDays = []; // Reset days
+              e.target.reset();
+            }}" style="display:flex;flex-direction:column;gap:10px;">
                         
                         <!-- Day Chips Selector -->
                         <div>
                           <label style="font-size:0.8rem;font-weight:bold;color:#6b21a8;margin-bottom:4px;display:block;">Välj dagar:</label>
                           <div style="display:flex;flex-wrap:wrap;gap:6px;">
                             ${[...DAYS, 'market'].map(d => {
-            const isSelected = this.selectedRecurringDays.includes(d);
-            const label = d === 'market' ? '🛒 Marknad' : d.substring(0, 3);
-            return html`
+              const isSelected = this.selectedRecurringDays.includes(d);
+              const label = d === 'market' ? '🛒 Marknad' : d.substring(0, 3);
+              return html`
                                 <button type="button" 
                                   @click="${() => {
-                if (isSelected) {
-                  this.selectedRecurringDays = this.selectedRecurringDays.filter(day => day !== d);
-                } else {
-                  this.selectedRecurringDays = [...this.selectedRecurringDays, d];
-                }
-              }}"
+                  if (isSelected) {
+                    this.selectedRecurringDays = this.selectedRecurringDays.filter(day => day !== d);
+                  } else {
+                    this.selectedRecurringDays = [...this.selectedRecurringDays, d];
+                  }
+                }}"
                                   style="padding:6px 10px;border-radius:12px;border:1px solid ${isSelected ? '#8b5cf6' : '#e9d5ff'};background:${isSelected ? '#8b5cf6' : '#fff'};color:${isSelected ? '#fff' : '#6b21a8'};font-size:0.85rem;font-weight:bold;cursor:pointer;transition:all 0.1s;">
                                   ${label}
                                 </button>
                               `;
-          })}
+            })}
                             <button type="button" 
                               @click="${() => this.selectedRecurringDays = [...DAYS]}"
                               style="padding:6px 10px;border-radius:12px;border:1px solid #c084fc;background:#f3e8ff;color:#6b21a8;font-weight:bold;cursor:pointer;">
@@ -1600,14 +1659,14 @@ class KronanPanel extends LitElement {
                         <!-- Helper to pick from library -->
                         <select style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e9d5ff;font-size:0.9rem;color:#6b21a8;" 
                           @change="${e => {
-            const t = this.taskLibrary.find(x => x.id === e.target.value);
-            if (t) {
-              const form = e.target.closest('form');
-              form.querySelector('[name=text]').value = t.text;
-              form.querySelector('[name=value]').value = t.value;
-              form.querySelector('[name=icon]').value = t.icon || '';
-            }
-          }}">
+              const t = this.taskLibrary.find(x => x.id === e.target.value);
+              if (t) {
+                const form = e.target.closest('form');
+                form.querySelector('[name=text]').value = t.text;
+                form.querySelector('[name=value]').value = t.value;
+                form.querySelector('[name=icon]').value = t.icon || '';
+              }
+            }}">
                           <option value="">-- Hämta info från biblioteket (fyller i nedan) --</option>
                           ${this.taskLibrary.map(t => html`<option value="${t.id}">${t.icon} ${t.text} (${t.value} kr)</option>`)}
                         </select>
@@ -1630,11 +1689,11 @@ class KronanPanel extends LitElement {
                           <div>
                             <span style="font-size:0.8rem;font-weight:bold;color:#8b5cf6;text-transform:uppercase;">
                               ${(() => {
-              if (r.days && Array.isArray(r.days)) {
-                return r.days.map(d => d === 'market' ? '🛒' : d.substring(0, 3)).join(', ');
-              }
-              return r.day === 'market' ? '🛒 Marknad' : r.day;
-            })()}
+                if (r.days && Array.isArray(r.days)) {
+                  return r.days.map(d => d === 'market' ? '🛒' : d.substring(0, 3)).join(', ');
+                }
+                return r.day === 'market' ? '🛒 Marknad' : r.day;
+              })()}
                             </span>
                             <div style="font-weight:500;color:#334155;">${r.icon} ${r.text} <span style="color:#94a3b8;font-size:0.9rem;">(${r.value} kr)</span></div>
                             ${r.assignee ? html`<div style="font-size:0.8rem;color:#64748b;">👤 ${r.assignee}</div>` : ''}
@@ -1676,7 +1735,7 @@ class KronanPanel extends LitElement {
               </div>
             </div>
           ` : ''
-      }
+        }
 
           ${this.showPayoutModal && this.payoutUser ? html`
             <div style="position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">
@@ -1689,10 +1748,10 @@ class KronanPanel extends LitElement {
                       style="flex:1;font-size:1.2rem;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-app);color:var(--text-primary);" autofocus>
                     <button style="background:var(--accent-color);color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:bold;"
                       @click="${() => {
-          const balance = this._calculateBalance(this.payoutUser.id).balance;
-          const input = this.shadowRoot.getElementById('payoutInput');
-          input.value = balance;
-        }}">Max</button>
+            const balance = this._calculateBalance(this.payoutUser.id).balance;
+            const input = this.shadowRoot.getElementById('payoutInput');
+            input.value = balance;
+          }}">Max</button>
                   </div>
                   <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:4px;">
                     Max belopp: ${this._calculateBalance(this.payoutUser.id).balance} kr
@@ -1703,19 +1762,19 @@ class KronanPanel extends LitElement {
                     @click="${() => { this.showPayoutModal = false; this.payoutUser = null; }}">Avbryt</button>
                   <button style="flex:1;background:#ef4444;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;"
                     @click="${() => {
-          const input = this.shadowRoot.getElementById('payoutInput');
-          const amount = Number(input.value);
-          if (amount > 0) {
-            this._registerPayout(this.payoutUser.id, amount);
-            this.showPayoutModal = false;
-            this.payoutUser = null;
-          }
-        }}">Bekräfta</button>
+            const input = this.shadowRoot.getElementById('payoutInput');
+            const amount = Number(input.value);
+            if (amount > 0) {
+              this._registerPayout(this.payoutUser.id, amount);
+              this.showPayoutModal = false;
+              this.payoutUser = null;
+            }
+          }}">Bekräfta</button>
                 </div>
               </div>
             </div>
           ` : ''
-      }
+        }
 
           ${this.editingUser ? html`
             <div style="position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">
@@ -1761,7 +1820,7 @@ class KronanPanel extends LitElement {
               </div>
             </div>
           ` : ''
-      }
+        }
 
           ${this.editingTask ? html`
             <div style="position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
@@ -1820,7 +1879,7 @@ class KronanPanel extends LitElement {
               </div>
             </div>
           ` : ''
-      }
+        }
 
           ${this.showAddTaskModal ? html`
             <div style="position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
@@ -1871,7 +1930,7 @@ class KronanPanel extends LitElement {
               </div>
             </div>
           ` : ''
-      }
+        }
 
           ${this.showMoveCopyModal && this.moveCopyData ? html`
             <div style="position:fixed;inset:0;z-index:2600;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
@@ -1915,7 +1974,7 @@ class KronanPanel extends LitElement {
               </div>
             </div>
           ` : ''
-      }
+        }
         </header >
 
         <main class="week-board">
@@ -1963,9 +2022,9 @@ class KronanPanel extends LitElement {
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                       ${item.assignee ? html`<div style="font-size:0.95rem;font-weight:bold;color:#334155;">
                         ${(() => {
-            const u = this.users.find(user => user.name === item.assignee);
-            return u && u.icon ? u.icon + ' ' : '👤 ';
-          })()}${item.assignee}</div>` : html`<div></div>`}
+              const u = this.users.find(user => user.name === item.assignee);
+              return u && u.icon ? u.icon + ' ' : '👤 ';
+            })()}${item.assignee}</div>` : html`<div></div>`}
                       ${item.value ? html`<span style="background:#10b981;color:#fff;padding:2px 8px;border-radius:6px;font-size:0.9rem;font-weight:bold;">${item.value} kr</span>` : html`<div></div>`}
                     </div>
                   </div>
@@ -1980,15 +2039,15 @@ class KronanPanel extends LitElement {
               <h3 style="font-size:1rem;font-weight:bold;color:#10b981;margin:0;">Veckosummering</h3>
               <div style="display:flex;gap:18px;flex-wrap:wrap;">
               ${Object.entries(totals).map(([name, data]) => {
-            const userColor = data.colorIndex !== undefined ? COLORS[data.colorIndex].bg : '#f1f5f9';
-            return html`
+              const userColor = data.colorIndex !== undefined ? COLORS[data.colorIndex].bg : '#f1f5f9';
+              return html`
                   <div style="display:flex;align-items:center;gap:10px;background:${userColor};border:1px solid #e5e7eb;padding:8px 18px;border-radius:14px;">
                     <div style="display:flex;flex-direction:column;">
                       <span style="font-size:0.95rem;font-weight:bold;color:#334155;">
                         ${(() => {
-                const u = this.users.find(user => user.name === name);
-                return u && u.icon ? u.icon + ' ' : '';
-              })()}${name}
+                  const u = this.users.find(user => user.name === name);
+                  return u && u.icon ? u.icon + ' ' : '';
+                })()}${name}
                       </span>
                       <span style="font-size:0.8rem;color:#64748b;">Fast: ${data.fixed} kr</span>
                     </div>
@@ -1996,19 +2055,19 @@ class KronanPanel extends LitElement {
                     <div style="text-align:right;">
                       <span style="font-weight:bold;color:#047857;font-size:1.2rem;">
                         ${(() => {
-                const u = this.users.find(user => user.name === name);
-                if (u) {
-                  const bal = this._calculateBalance(u.id);
-                  return bal.balance;
-                }
-                return data.total;
-              })()} kr
+                  const u = this.users.find(user => user.name === name);
+                  if (u) {
+                    const bal = this._calculateBalance(u.id);
+                    return bal.balance;
+                  }
+                  return data.total;
+                })()} kr
                       </span>
                       <span style="display:block;font-size:0.75rem;color:#64748b;">(${data.tasks} kr sysslor)</span>
                     </div>
                   </div>
                 `;
-          })}
+            })}
               ${Object.keys(totals).length === 0 ? html`<span style="color:#64748b;font-size:0.95rem;">Lägg till personer och uppgifter för att se summering.</span>` : ''}
             </div>
             </div>
@@ -2019,20 +2078,52 @@ class KronanPanel extends LitElement {
         </footer>
 
         ${'' /* Legacy Modal Removed */}
-      }
-      </div >
-  `;
-  }
+        
+        <!-- Toast Notification -->
+        ${this.toast.visible ? html`
+          <div style="position:fixed;top:20px;right:20px;z-index:3000;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.15);padding:16px 20px;display:flex;flex-direction:column;gap:10px;animation:slideIn 0.3s ease-out;border:1px solid #e5e7eb;min-width:300px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-weight:600;color:#1e293b;font-size:1rem;">${this.toast.message}</span>
+              ${this.toast.countdown > 0 ? html`
+                <span style="font-size:0.8rem;font-weight:bold;color:#f59e0b;background:#fef3c7;padding:2px 8px;border-radius:10px;">${this.toast.countdown}s</span>
+              ` : ''}
+            </div>
+            ${this.toast.actions.length > 0 ? html`
+              <div style="display:flex;gap:10px;justify-content:flex-end;">
+                ${this.toast.actions.map(action => html`
+                  <button 
+                    @click="${action.onClick}" 
+                    style="padding:6px 12px;border-radius:8px;font-size:0.9rem;font-weight:bold;cursor:pointer;border:none;${action.critical
+                ? 'background:#ef4444;color:white;'
+                : 'background:#f1f5f9;color:#334155;'}"
+                  >
+                    ${action.label}
+                  </button>
+                `)}
+              </div>
+            ` : ''}
+          </div>
+          <style>
+            @keyframes slideIn {
+              from { opacity: 0; transform: translateY(-20px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          </style>
+        ` : ''}
+
+       </div>
+   `;
+    }
 
   _crownIcon() {
-    return html`
+      return html`
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M2.5 9l5 2.5L12 3l4.5 8.5L21.5 9l-2 11h-15l-2-11z" fill="currentColor" fill-opacity="0.2"/>
         <path d="M2 9l5 3 5-9 5 9 5-3-2 12H4L2 9z" />
         <path d="M12 16a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="currentColor"/>
       </svg>
     `;
+    }
   }
-}
 
 customElements.define('kronan-panel-v3', KronanPanel);
