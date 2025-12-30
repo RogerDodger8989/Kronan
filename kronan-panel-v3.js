@@ -182,8 +182,8 @@ class KronanPanel extends LitElement {
       border: 1px solid var(--border-color);
       padding: 18px 12px 12px 12px;
       flex: 1;
-      min-width: 300px; /* Force minimum width to prevent squashing */
-      flex-shrink: 0;   /* Don't let them shrink */
+      min-width: 180px; /* Allow shrinking to fit screen */
+      flex-shrink: 1;   /* Allow shrinking */
       display: flex;
       flex-direction: column;
       height: 100%;

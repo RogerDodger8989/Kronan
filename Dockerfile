@@ -1,4 +1,5 @@
 FROM node:alpine
+ENV REFRESHED_AT=2025-12-30-Attempt-100
 
 WORKDIR /usr/src/app
 
