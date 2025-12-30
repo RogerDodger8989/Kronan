@@ -2158,8 +2158,10 @@ class KronanPanel extends LitElement {
             <div style="display:flex;gap:24px;align-items:center;">
               <h3 style="font-size:1rem;font-weight:bold;color:#10b981;margin:0;">Veckosummering</h3>
               <div style="display:flex;gap:18px;flex-wrap:wrap;">
-              ${Object.entries(totals).map(([name, data]) => {
+          ${Object.entries(totals).map(([name, data]) => {
             const userColor = data.colorIndex !== undefined ? COLORS[data.colorIndex].bg : '#f1f5f9';
+            const u = this.users.find(user => user.name === name);
+            const bal = u ? this._calculateBalance(u.id) : { balance: 0 };
             return html`
                   <div style="display:flex;align-items:center;gap:10px;background:${userColor};border:1px solid #e5e7eb;padding:8px 18px;border-radius:14px;">
                     <div style="display:flex;flex-direction:column;">
@@ -2170,18 +2172,12 @@ class KronanPanel extends LitElement {
               })()}${name}
                       </span>
                       <span style="font-size:0.8rem;color:#64748b;">Fast: ${data.fixed} kr</span>
+                      <span style="font-size:0.8rem;font-weight:bold;color:${bal.balance >= 0 ? '#059669' : '#dc2626'};">Saldo: ${bal.balance} kr</span>
                     </div>
                     <div style="width:1px;height:32px;background:#e5e7eb;margin:0 10px;"></div>
                     <div style="text-align:right;">
                       <span style="font-weight:bold;color:#047857;font-size:1.2rem;">
-                        ${(() => {
-                const u = this.users.find(user => user.name === name);
-                if (u) {
-                  const bal = this._calculateBalance(u.id);
-                  return bal.balance;
-                }
-                return data.total;
-              })()} kr
+                        ${data.total} kr
                       </span>
                       <span style="display:block;font-size:0.75rem;color:#64748b;">(${data.tasks} kr sysslor)</span>
                     </div>
