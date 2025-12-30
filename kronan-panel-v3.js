@@ -1705,9 +1705,28 @@ class KronanPanel extends LitElement {
                     `)}
                   </div>
                 </div>
+
+                <div style="margin-bottom:18px;">
+                  <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Vem ska göra detta?</label><br>
+                  <select style="width:100%;font-size:1.1rem;padding:8px 12px;border-radius:8px;border:1px solid #ddd;margin-top:4px;"
+                    .value="${this.editingTask.assignee || ''}" 
+                    @change="${e => this.editingTask = { ...this.editingTask, assignee: e.target.value }}">
+                    <option value="">-- Ingen --</option>
+                    ${this.users.map(u => html`
+                      <option value="${u.name}" ?selected="${u.name === this.editingTask.assignee}">${u.name}</option>
+                    `)}
+                  </select>
+                </div>
+
                 <div style="display:flex;gap:10px;margin-top:24px;">
-                  <button style="flex:1;background:#10b981;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;"
+                   ${this.editingTask.day ? html`
+                    <button style="flex:1;background:#ef4444;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;"
+                      @click="${() => this._deleteTask(this.editingTask.day, this.editingTask.id)}">Ta bort</button>
+                   ` : ''}
+
+                  <button style="flex:2;background:#10b981;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;"
                     @click="${() => this._saveEditTask()}">Spara</button>
+                    
                   <button style="flex:1;background:#e5e7eb;color:#334155;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;"
                     @click="${() => this.editingTask = null}">Avbryt</button>
                 </div>
