@@ -904,7 +904,9 @@ class KronanPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this._loadData();
+    this._loadData().then(() => {
+      this._fixDuplicateIds();
+    });
     document.addEventListener('fullscreenchange', this._handleFullscreenChange.bind(this));
   }
 
@@ -1039,6 +1041,57 @@ class KronanPanel extends LitElement {
     }
 
     this._refreshView();
+  }
+
+  _fixDuplicateIds() {
+    const ids = new Set();
+    const mapOldNew = {};
+    let fixNeeded = false;
+
+    // 1. Identify duplicates
+    const seen = new Set();
+    const dups = new Set();
+    this.users.forEach(u => {
+      if (seen.has(u.id)) dups.add(u.id);
+      seen.add(u.id);
+    });
+
+    if (dups.size === 0) return;
+
+    // 2. Fix Duplicates
+    this.users = this.users.map(u => {
+      if (dups.has(u.id)) {
+        // This ID is a collision. We must check if we've already seen this specific instance? 
+        // No, map loops one by one.
+        // Wait. if duplicates exist (A and B have id 1), both are in 'dups'.
+        // We need to keep ONE of them as '1' (or change both safely).
+        // Safest: Change ALL duplicates to new unique IDs to avoid confusion.
+        // But we lose history linkage.
+        // Better: Change the SECOND occurance?
+        // Let's rely on 'ids' set.
+        if (ids.has(u.id)) {
+          // This is the SECOND time we see this ID. Change it.
+          fixNeeded = true;
+          const newId = generateId(); // Unique
+          console.warn(`Duplicate ID fixed for user ${u.name}: ${u.id} -> ${newId}`);
+          mapOldNew[u.id] = newId; // Map Old -> New (but only for this specific user instance... wait, how do we distinguish for payouts?)
+          // We can't distinguish for payouts. Payouts are linked to ID 'X'. 
+          // If we change User B's ID to 'Y', their payouts (linked to 'X') will stay with User A.
+          // This is unavoidable without manual intervention.
+          // PROPOSAL: Assign new ID. User starts fresh history. 
+          // It fixes the "Ghost Payout" bug moving forward.
+          return { ...u, id: newId };
+        }
+        ids.add(u.id);
+        return u;
+      }
+      ids.add(u.id);
+      return u;
+    });
+
+    if (fixNeeded) {
+      this._saveData();
+    }
   }
 
   async _saveData() {
