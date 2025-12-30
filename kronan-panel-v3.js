@@ -287,24 +287,30 @@ class KronanPanel extends LitElement {
   `;
 
   static properties = {
-    // BUT, "Måndag" is generic.
-    // Ideally completedTasks should be part of the week object structure itself to self-contain it.
-    // For now, let's keep it global but maybe clear it or namespace it?
-    // Wait, the better approach for "completedTasks" is to store "done: true" on the task item itself inside the week object.
-    // The current app stores it in a separate "completedTasks" object { "Måndag-t1": true }.
-    // If we swap weeks, "Måndag-t1" might refer to a task in another week if not careful?
-    // Actually, since we save "week" object, and "completedTasks" is separate...
-    // If I load Week 51, "week" has tasks. "completedTasks" has status.
-    // I should probably move completion status INTO the task item for safety in multi-week.
-    // OR: key completedTasks by "WeekID-Day-TaskID"?
-    // The current "completedTasks" logic: `_toggleTaskCompleted(day, id)` uses key `${day}-${id}`.
-    // Since IDs are random (Math.random), collision is unlikely.
-    // So global completedTasks object growing forever is the main risk.
-    // Better: migrate completion status to the task object itself during migration?
-    // Let's stick to the plan: `weeksData` stores `week` objects.
-    // I will try to migrate "completedTasks" into the `week` items if possible, or just keep it as is for now and see if it breaks.
-    // Actually, user just asked for navigation.
-    // Let's add `weeksData` and `currentDate` properties.
+    week: { type: Object },
+    weeksData: { type: Object },
+    currentDate: { type: Object },
+    loading: { type: Boolean },
+
+    // UI State
+    showAddTaskModal: { type: Boolean },
+    selectedDay: { type: String },
+    selectedTaskFromLibrary: { type: Object },
+    selectedAssignee: { type: String },
+
+    showTemplateModal: { type: Boolean },
+    templates: { type: Array },
+
+    showMoneyModal: { type: Boolean },
+    moneyTab: { type: String },
+
+    users: { type: Array },
+    taskLibrary: { type: Array },
+
+    editingUser: { type: Object },
+    editingTask: { type: Object },
+
+    completedTasks: { type: Object },
 
     showMoveCopyModal: { type: Boolean },
     moveCopyData: { type: Object },
