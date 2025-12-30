@@ -28,7 +28,10 @@ const ICONS = [
 ];
 
 function generateId() {
-  return Math.random().toString(36).substr(2, 9);
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
 
 // --- Date Helpers ---
@@ -680,30 +683,7 @@ class KronanPanel extends LitElement {
     this._saveData();
   }
 
-  _confirmAddTask() {
-    if (!this.selectedTaskFromLibrary || !this.selectedDay) return;
 
-    const newTask = {
-      id: generateId(),
-      libraryId: this.selectedTaskFromLibrary.id, // Store link to library
-      text: this.selectedTaskFromLibrary.text,
-      value: this.selectedTaskFromLibrary.value,
-      // colorIndex removed
-      icon: this.selectedTaskFromLibrary.icon || '',
-      assignee: this.selectedAssignee || undefined
-    };
-
-    this.week = {
-      ...this.week,
-      [this.selectedDay]: [...this.week[this.selectedDay], newTask]
-    };
-
-    this.showAddTaskModal = false;
-    this.selectedDay = '';
-    this.selectedTaskFromLibrary = null;
-    this.selectedAssignee = '';
-    this._saveData();
-  }
 
   _cleanupOldData() {
     const KEEP_COUNT = 10;
@@ -1145,6 +1125,12 @@ class KronanPanel extends LitElement {
 
   _addTask(day) {
     this.selectedDay = day;
+    // Set default selected days to just this day
+    if (day !== 'market') {
+      this.selectedRecurringDays = [day];
+    } else {
+      this.selectedRecurringDays = [];
+    }
     this.selectedTaskFromLibrary = null;
     this.selectedAssignee = '';
     this.showAddTaskModal = true;
@@ -1209,6 +1195,43 @@ class KronanPanel extends LitElement {
     };
     this._saveData();
     this._closeEdit();
+  }
+
+  _confirmAddTask() {
+    if (!this.selectedTaskFromLibrary) return;
+
+    const taskData = {
+      ...this.selectedTaskFromLibrary,
+      assignee: this.selectedAssignee || null
+    };
+
+    // Determine target days
+    let targetDays = [];
+    if (this.selectedDay === 'market') {
+      targetDays = ['market'];
+    } else {
+      // Use the multi-select array, fallback to selectedDay if empty (safety)
+      targetDays = this.selectedRecurringDays.length > 0 ? this.selectedRecurringDays : [this.selectedDay];
+    }
+
+    targetDays.forEach(day => {
+      // Clone for each day with unique ID
+      const newTask = { ...taskData, id: generateId() };
+
+      if (day === 'market') {
+        this.week.market = [...(this.week.market || []), newTask];
+      } else {
+        const newWeek = { ...this.week };
+        if (!newWeek[day]) newWeek[day] = [];
+        newWeek[day] = [...newWeek[day], newTask];
+        this.week = newWeek;
+      }
+    });
+
+    this._saveData();
+    this.showAddTaskModal = false;
+    this.selectedTaskFromLibrary = null;
+    this.selectedAssignee = '';
   }
 
   _getWeekNumber(d) {
@@ -1286,7 +1309,11 @@ class KronanPanel extends LitElement {
   }
 
   _deleteTask(day, id) {
-    this.week = { ...this.week, [day]: this.week[day].filter(t => t.id !== id) };
+    // Soft delete: Mark as deleted to keep valid earnings calculation
+    this.week = {
+      ...this.week,
+      [day]: this.week[day].map(t => t.id === id ? { ...t, deleted: true } : t)
+    };
     this._saveData();
     if (this.isEditing && this.isEditing.day === day && this.isEditing.id === id) {
       this._closeEdit();
@@ -1303,24 +1330,78 @@ class KronanPanel extends LitElement {
       const newWeek = { ...this.week };
       DAYS.forEach(day => {
         if (newWeek[day]) {
-          newWeek[day] = newWeek[day].filter(t => {
+          newWeek[day] = newWeek[day].map(t => {
             const nameMatch = t.text === text;
             const assigneeMatch = assignee ? t.assignee === assignee : true;
-            return !(nameMatch && assigneeMatch);
+            return (nameMatch && assigneeMatch) ? { ...t, deleted: true } : t;
           });
         }
       });
       // Also check market
       if (newWeek.market) {
-        newWeek.market = newWeek.market.filter(t => {
+        newWeek.market = newWeek.market.map(t => {
           const nameMatch = t.text === text;
           const assigneeMatch = assignee ? t.assignee === assignee : true;
-          return !(nameMatch && assigneeMatch);
+          return (nameMatch && assigneeMatch) ? { ...t, deleted: true } : t;
         });
       }
       this.week = newWeek;
       this._saveData();
       this.editingTask = null; // Close modal
+    }
+  }
+
+  _requestResetPayouts() {
+    this._showToast("Vill du nollställa all utbetalningshistorik? (Saldot påverkas ej)", [
+      { label: "Avbryt", onClick: () => { this.toast = { visible: false, message: '', actions: [], countdown: 0 }; this.requestUpdate(); } },
+      { label: "Nollställ", critical: true, onClick: () => this._performResetPayouts() }
+    ]);
+  }
+
+  _performResetPayouts() {
+    this.toast = { visible: false, message: '', actions: [], countdown: 0 };
+
+    // Create Snapshot for Undo
+    this.undoSnapshot = {
+      payouts: JSON.parse(JSON.stringify(this.payouts || [])),
+      users: JSON.parse(JSON.stringify(this.users || []))
+    };
+
+    // Update Users: Net out the payments from archivedBalance
+    const newUsers = this.users.map(u => {
+      // Calculate total paid for this user from current payouts list
+      const totalPaid = this.payouts
+        .filter(p => p.userId === u.id)
+        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+      // Reduce archivedBalance by the paid amount
+      // (This reduces 'Earned' by the same amount 'Paid' is reduced, keeping Net Balance constant)
+      return {
+        ...u,
+        archivedBalance: (Number(u.archivedBalance) || 0) - totalPaid
+      };
+    });
+
+    this.users = newUsers;
+    this.payouts = [];
+    this._saveData();
+
+    // Show Undo Toast
+    this._showToast("Historik nollställd (5s)", [
+      { label: "Ångra", onClick: () => this._restorePayouts() }
+    ], 5, () => {
+      // On expire (commit) - clear snapshot
+      this.undoSnapshot = null;
+    });
+  }
+
+  _restorePayouts() {
+    if (this.undoSnapshot) {
+      if (this.undoSnapshot.payouts) this.payouts = this.undoSnapshot.payouts;
+      if (this.undoSnapshot.users) this.users = this.undoSnapshot.users;
+      this.undoSnapshot = null;
+      this._saveData();
+      this.toast = { visible: false, message: '', actions: [], countdown: 0 };
     }
   }
 
@@ -1595,6 +1676,15 @@ class KronanPanel extends LitElement {
                           `;
         })}
                         ${this.payouts.length === 0 ? html`<div style="color:#94a3b8;font-size:0.9rem;">Inga utbetalningar registrerade än.</div>` : ''}
+                      </div>
+
+                      <div style="margin-top:20px;padding-top:20px;border-top:1px solid #e5e7eb;">
+                        <button @click="${() => this._requestResetPayouts()}" style="width:100%;color:#ef4444;background:none;border:1px solid #ef4444;padding:10px 0;border-radius:10px;font-weight:bold;cursor:pointer;">
+                          🗑️ Nollställ all utbetalningshistorik
+                        </button>
+                        <div style="text-align:center;font-size:0.8rem;color:#94a3b8;margin-top:6px;">
+                          Detta nollar "Totalt utbetalat" men behåller aktuellt saldo.
+                        </div>
                       </div>
                     </div>
                   ` : this.moneyTab === 'recurring' ? html`
@@ -1886,9 +1976,38 @@ class KronanPanel extends LitElement {
             <div style="position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
               <div style="background:#fff;border-radius:24px;box-shadow:0 8px 40px #0003;padding:32px;min-width:320px;max-width:96vw;width:400px;display:flex;flex-direction:column;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-                  <h2 style="font-size:1.2rem;font-weight:bold;color:#6366f1;">Lägg till uppgift på ${this.selectedDay}</h2>
+                  <h2 style="font-size:1.2rem;font-weight:bold;color:#6366f1;">Lägg till uppgift</h2>
                   <button style="background:none;border:none;font-size:1.5rem;color:#64748b;cursor:pointer;" @click="${() => this.showAddTaskModal = false}">✕</button>
                 </div>
+
+                ${this.selectedDay !== 'market' ? html`
+                  <div style="margin-bottom:18px;">
+                    <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Välj dagar</label><br>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+                      ${DAYS.map(d => {
+        const isSelected = this.selectedRecurringDays.includes(d);
+        return html`
+                          <button type="button" 
+                            @click="${() => {
+            if (isSelected) {
+              this.selectedRecurringDays = this.selectedRecurringDays.filter(day => day !== d);
+            } else {
+              this.selectedRecurringDays = [...this.selectedRecurringDays, d];
+            }
+          }}"
+                            style="padding:6px 10px;border-radius:12px;border:1px solid ${isSelected ? '#8b5cf6' : '#e9d5ff'};background:${isSelected ? '#8b5cf6' : '#fff'};color:${isSelected ? '#fff' : '#6b21a8'};font-size:0.85rem;font-weight:bold;cursor:pointer;">
+                            ${d.substring(0, 3)}
+                          </button>
+                        `;
+      })}
+                      <button type="button" 
+                        @click="${() => this.selectedRecurringDays = [...DAYS]}"
+                        style="padding:6px 10px;border-radius:12px;border:1px solid #c084fc;background:#f3e8ff;color:#6b21a8;font-weight:bold;cursor:pointer;">
+                        Alla
+                      </button>
+                    </div>
+                  </div>
+                ` : ''}
                 
                 <div style="margin-bottom:18px;">
                   <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Välj från lista</label><br>
@@ -1988,7 +2107,7 @@ class KronanPanel extends LitElement {
                 <button class="add-btn" style="background:#94a3b8;" @click="${() => this._addTask('market')}">+</button>
               </div>
               <div>
-                ${(this.week.market || []).map((item, i) => html`
+                ${(this.week.market || []).filter(item => !item.deleted).map((item, i) => html`
                   <div class="sticky" style="background:#fff;border-color:#cbd5e1;border-style:dashed;color:#64748b;"
                     draggable="true"
                     @dragstart="${e => this._onDragStart(e, item, 'market')}"
@@ -2013,7 +2132,7 @@ class KronanPanel extends LitElement {
                 <button class="add-btn" @click="${() => this._addTask(day)}">+</button>
               </div>
               <div>
-                ${this.week[day].map((item, i) => html`
+                ${this.week[day].filter(item => !item.deleted).map((item, i) => html`
                   <div class="sticky" style="${(() => { const u = this.users.find(us => us.name === item.assignee); const cIdx = u ? u.defaultColorIndex : 5; return `background:${COLORS[cIdx].bg};border-color:${COLORS[cIdx].border};border-style:solid;`; })()}${this.completedTasks[`${day}-${item.id}`] ? 'opacity:0.6;text-decoration:line-through;' : ''}"
                     draggable="true"
                     @dragstart="${e => this._onDragStart(e, item, day)}"
