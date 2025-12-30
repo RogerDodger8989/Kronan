@@ -5,3 +5,8 @@ services:
     restart: unless-stopped
     ports:
       - "8095:80"
+    volumes:
+      - kronan-data:/usr/src/app/data
+
+volumes:
+  kronan-data:
