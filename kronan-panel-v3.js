@@ -1288,18 +1288,30 @@ class KronanPanel extends LitElement {
     }
   }
 
-  _deleteAllByName(text) {
+  _deleteAllStrict(text, assignee) {
     if (!text) return;
-    if (confirm(`Är du säker på att du vill radera ALLA uppgifter med namnet "${text}" från hela veckovyn?`)) {
+    const confirmMsg = assignee
+      ? `Är du säker på att du vill radera ALLA uppgifter med namnet "${text}" OCH personen "${assignee}" från hela veckovyn?`
+      : `Är du säker på att du vill radera ALLA uppgifter med namnet "${text}" (oavsett person) från hela veckovyn?`;
+
+    if (confirm(confirmMsg)) {
       const newWeek = { ...this.week };
       DAYS.forEach(day => {
         if (newWeek[day]) {
-          newWeek[day] = newWeek[day].filter(t => t.text !== text);
+          newWeek[day] = newWeek[day].filter(t => {
+            const nameMatch = t.text === text;
+            const assigneeMatch = assignee ? t.assignee === assignee : true;
+            return !(nameMatch && assigneeMatch);
+          });
         }
       });
       // Also check market
       if (newWeek.market) {
-        newWeek.market = newWeek.market.filter(t => t.text !== text);
+        newWeek.market = newWeek.market.filter(t => {
+          const nameMatch = t.text === text;
+          const assigneeMatch = assignee ? t.assignee === assignee : true;
+          return !(nameMatch && assigneeMatch);
+        });
       }
       this.week = newWeek;
       this._saveData();
@@ -1796,7 +1808,7 @@ class KronanPanel extends LitElement {
                       @click="${() => this._deleteTask(this.editingTask.day, this.editingTask.id)}">Ta bort</button>
                     
                     <button style="flex:1;background:#b91c1c;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:0.8rem;cursor:pointer;margin-left:5px;"
-                      @click="${() => this._deleteAllByName(this.editingTask.text)}">Radera alla (Namn)</button>
+                      @click="${() => this._deleteAllStrict(this.editingTask.text, this.editingTask.assignee)}">Radera alla denna veckan</button>
                    ` : ''}
 
                   <button style="flex:2;background:#10b981;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;"
