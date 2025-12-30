@@ -859,11 +859,45 @@ class KronanPanel extends LitElement {
     DAYS.forEach(day => { week[day] = []; });
 
     // Populate with Recurring Tasks
+    const currentWeekNum = this._getWeekNumber(new Date());
+
     if (this.recurringRules && this.recurringRules.length > 0) {
       this.recurringRules.forEach(rule => {
-        if (rule.days && Array.isArray(rule.days)) {
-          // New format: Multiple days
-          rule.days.forEach(d => {
+        // Check Interval Logic
+        let shouldAdd = true;
+        if (rule.interval === 'biweekly') {
+          if (rule.startWeek !== undefined) {
+            // Parity check: (Current - Start) % 2 === 0
+            const diff = currentWeekNum - rule.startWeek;
+            if (Math.abs(diff) % 2 !== 0) {
+              shouldAdd = false;
+            }
+          }
+        }
+        // Note: For 'every', shouldAdd matches default true.
+        // We do not strictly enforce 'next' offset here because _initWeek implies "Current Week".
+        // If rule.startWeek > currentWeekNum (future), maybe we should skip? 
+        // But users might change date on device. Let's keep it simple: Parity check is robust.
+
+        if (shouldAdd) {
+          if (rule.days && Array.isArray(rule.days)) {
+            // New format: Multiple days
+            rule.days.forEach(d => {
+              const newTask = {
+                id: generateId(),
+                text: rule.text,
+                value: Number(rule.value) || 0,
+                icon: rule.icon || '',
+                assignee: rule.assignee || undefined
+              };
+              if (week[d]) {
+                week[d].push(newTask);
+              } else if (d === 'market') {
+                week.market.push(newTask);
+              }
+            });
+          } else if (rule.day) {
+            // Legacy format: Single day
             const newTask = {
               id: generateId(),
               text: rule.text,
@@ -871,25 +905,11 @@ class KronanPanel extends LitElement {
               icon: rule.icon || '',
               assignee: rule.assignee || undefined
             };
-            if (week[d]) {
-              week[d].push(newTask);
-            } else if (d === 'market') {
+            if (week[rule.day]) {
+              week[rule.day].push(newTask);
+            } else if (rule.day === 'market') {
               week.market.push(newTask);
             }
-          });
-        } else if (rule.day) {
-          // Legacy format: Single day
-          const newTask = {
-            id: generateId(),
-            text: rule.text,
-            value: Number(rule.value) || 0,
-            icon: rule.icon || '',
-            assignee: rule.assignee || undefined
-          };
-          if (week[rule.day]) {
-            week[rule.day].push(newTask);
-          } else if (rule.day === 'market') {
-            week.market.push(newTask);
           }
         }
       });
@@ -1187,8 +1207,21 @@ class KronanPanel extends LitElement {
     this._closeEdit();
   }
 
-  _addRecurringRule(days, text, value, icon, assignee) {
+  _getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
+  }
+
+  _addRecurringRule(days, text, value, icon, assignee, interval = 'every', startOffset = 'current') {
     if (!text || !days || days.length === 0) return;
+    const currentWeek = this._getWeekNumber(new Date());
+    let startWeek = currentWeek;
+    if (startOffset === 'next') startWeek = currentWeek + 1;
+
+
     this.recurringRules = [
       ...this.recurringRules,
       {
@@ -1197,38 +1230,51 @@ class KronanPanel extends LitElement {
         text,
         value: Number(value) || 0,
         icon: icon || '',
-        assignee: assignee || undefined
+        assignee: assignee || undefined,
+        interval,
+        startWeek
       }
     ];
 
-    // Immediately apply to current week
-    const newRule = this.recurringRules[this.recurringRules.length - 1];
-    const targetDays = Array.isArray(newRule.days) ? newRule.days : [newRule.days];
-
-    targetDays.forEach(d => {
-      // Check if day exists in current week view (it should)
-      if (this.week[d] || d === 'market') {
-        const newTask = {
-          id: generateId(),
-          text: newRule.text,
-          value: Number(newRule.value) || 0,
-          icon: newRule.icon || '',
-          assignee: newRule.assignee || undefined
-        };
-        // Add to week data
-        if (d === 'market') {
-          this.week.market = [...this.week.market, newTask];
-        } else {
-          this.week = {
-            ...this.week,
-            [d]: [...this.week[d], newTask]
-          };
-        }
+    // Immediately apply check
+    let shouldApply = false;
+    if (startOffset === 'current') {
+      if (interval === 'every') {
+        shouldApply = true;
+      } else if (interval === 'biweekly') {
+        shouldApply = true; // startWeek IS currentWeek, so parity matches
       }
-    });
+    }
+
+    if (shouldApply) {
+      const newRule = this.recurringRules[this.recurringRules.length - 1];
+      const targetDays = Array.isArray(newRule.days) ? newRule.days : [newRule.days];
+
+      targetDays.forEach(d => {
+        if (this.week[d] || d === 'market') {
+          const newTask = {
+            id: generateId(),
+            text: newRule.text,
+            value: Number(newRule.value) || 0,
+            icon: newRule.icon || '',
+            assignee: newRule.assignee || undefined
+          };
+          if (d === 'market') {
+            this.week.market = [...this.week.market, newTask];
+          } else {
+            this.week = {
+              ...this.week,
+              [d]: [...this.week[d], newTask]
+            };
+          }
+        }
+      });
+    }
 
     this._saveData();
   }
+
+
 
   _deleteRecurringRule(id) {
     this.recurringRules = this.recurringRules.filter(r => r.id !== id);
@@ -1476,7 +1522,9 @@ class KronanPanel extends LitElement {
               formData.get('text'),
               formData.get('value'),
               formData.get('icon'),
-              formData.get('assignee')
+              formData.get('assignee'),
+              formData.get('interval') || 'every',
+              formData.get('startOffset') || 'current'
             );
             this.selectedRecurringDays = []; // Reset days
             e.target.reset();
@@ -1504,6 +1552,24 @@ class KronanPanel extends LitElement {
                               `;
           })}
                           </div>
+                        </div>
+
+                        <!-- Interval Settings -->
+                        <div style="display:flex;gap:10px;">
+                            <div style="flex:1;">
+                                <label style="font-size:0.8rem;font-weight:bold;color:#6b21a8;">Intervall</label>
+                                <select name="interval" style="width:100%;padding:8px;border-radius:8px;border:1px solid #c084fc;font-size:0.9rem;">
+                                    <option value="every">Varje vecka</option>
+                                    <option value="biweekly">Varannan vecka</option>
+                                </select>
+                            </div>
+                            <div style="flex:1;">
+                                <label style="font-size:0.8rem;font-weight:bold;color:#6b21a8;">Starta</label>
+                                <select name="startOffset" style="width:100%;padding:8px;border-radius:8px;border:1px solid #c084fc;font-size:0.9rem;">
+                                    <option value="current">Denna vecka</option>
+                                    <option value="next">Nästa vecka</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div style="display:flex;gap:10px;">
