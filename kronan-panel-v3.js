@@ -321,7 +321,7 @@ class KronanPanel extends LitElement {
 
   constructor() {
     super();
-    console.log("KronanPanel Loaded v2.3 - setConfig Ready");
+    console.log("KronanPanel Loaded v2.4 (SYNC FIX) - setConfig Ready");
     this.week = this._initWeek();
     this.weeksData = {}; // Format: { '2025-W1': { weekData... }, '2025-W2': ... }
     this.currentDate = new Date();
@@ -1024,6 +1024,8 @@ class KronanPanel extends LitElement {
 
   async _saveData() {
     this._persistCurrentView();
+    // Force UI update
+    this.requestUpdate();
 
     // Kör sparning asynkront
     setTimeout(async () => {
