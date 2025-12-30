@@ -859,7 +859,7 @@ class KronanPanel extends LitElement {
     DAYS.forEach(day => { week[day] = []; });
 
     // Populate with Recurring Tasks
-    const currentWeekNum = this._getWeekNumber(new Date());
+    const currentWeekNum = this._getWeekNumber(this.currentDate);
 
     if (this.recurringRules && this.recurringRules.length > 0) {
       this.recurringRules.forEach(rule => {
