@@ -1289,6 +1289,25 @@ class KronanPanel extends LitElement {
     }
   }
 
+  _deleteAllByName(text) {
+    if (!text) return;
+    if (confirm(`Är du säker på att du vill radera ALLA uppgifter med namnet "${text}" från hela veckovyn?`)) {
+      const newWeek = { ...this.week };
+      DAYS.forEach(day => {
+        if (newWeek[day]) {
+          newWeek[day] = newWeek[day].filter(t => t.text !== text);
+        }
+      });
+      // Also check market
+      if (newWeek.market) {
+        newWeek.market = newWeek.market.filter(t => t.text !== text);
+      }
+      this.week = newWeek;
+      this._saveData();
+      this.editingTask = null; // Close modal
+    }
+  }
+
   _onEditInput(e, field) {
     this.editData = { ...this.editData, [field]: e.target.value };
   }
@@ -1788,6 +1807,9 @@ class KronanPanel extends LitElement {
                    ${this.editingTask.day ? html`
                     <button style="flex:1;background:#ef4444;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;"
                       @click="${() => this._deleteTask(this.editingTask.day, this.editingTask.id)}">Ta bort</button>
+                    
+                    <button style="flex:1;background:#b91c1c;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:0.8rem;cursor:pointer;margin-left:5px;"
+                      @click="${() => this._deleteAllByName(this.editingTask.text)}">Radera alla (Namn)</button>
                    ` : ''}
 
                   <button style="flex:2;background:#10b981;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;"
