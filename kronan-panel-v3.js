@@ -463,6 +463,31 @@ class KronanPanel extends LitElement {
       ...this.templates,
       { id: generateId(), name, data: weekCopy }
     ];
+
+    // Immediately apply to current week
+    const newRule = this.recurringRules[this.recurringRules.length - 1];
+    const targetDays = Array.isArray(newRule.days) ? newRule.days : [newRule.days];
+
+    targetDays.forEach(d => {
+      if (this.week[d] || d === 'market') {
+        const newTask = {
+          id: generateId(),
+          text: newRule.text,
+          value: Number(newRule.value) || 0,
+          icon: newRule.icon || '',
+          assignee: newRule.assignee || undefined
+        };
+        if (d === 'market') {
+          this.week.market = [...this.week.market, newTask];
+        } else {
+          this.week = {
+            ...this.week,
+            [d]: [...this.week[d], newTask]
+          };
+        }
+      }
+    });
+
     this._saveData();
   }
 
@@ -545,49 +570,33 @@ class KronanPanel extends LitElement {
   _saveEditTask() {
     if (!this.editingTask) return;
 
-    // Hitta originalet för att jämföra namn
-    const original = this.taskLibrary.find(t => t.id === this.editingTask.id);
-
-    if (original) {
-      // Hitta alla matchande uppgifter i veckovyn
-      const matches = [];
-      Object.entries(this.week).forEach(([day, tasks]) => {
-        tasks.forEach((task, idx) => {
-          // 1. Match by ID (robust link)
-          if (task.libraryId === original.id) {
-            matches.push({ day, idx });
-          }
-          // 2. Fallback: Match by Name (legacy/broken link) - Robust check
-          // We allow this even if task has a libraryId, to catch "zombie" links (e.g. if original was deleted and re-created)
-          else if (task.text.trim().toLowerCase() === original.text.trim().toLowerCase()) {
-            matches.push({ day, idx });
-          }
-        });
-      });
-
-      // Fråga om vi ska uppdatera dem
-      if (matches.length > 0) {
-        if (window.confirm(`Vill du uppdatera ${matches.length} befintliga uppgifter på veckovyn med den nya informationen?`)) {
-          const newWeek = { ...this.week };
-          matches.forEach(({ day, idx }) => {
-            const task = newWeek[day][idx];
-            newWeek[day][idx] = {
-              ...task,
-              libraryId: original.id, // Ensure link is preserved
-              text: this.editingTask.text, // Uppdatera namn (om ändrat)
-              value: this.editingTask.value, // Uppdatera pris
-              // colorIndex removed: inherited from assignee
-              icon: this.editingTask.icon // Uppdatera ikon
-            };
-          });
-          this.week = newWeek;
+    // Check if we are editing a specific instance (Week Task)
+    if (this.editingTask.day) {
+      const { day, id } = this.editingTask;
+      if (this.week[day]) {
+        this.week = {
+          ...this.week,
+          [day]: this.week[day].map(t =>
+            t.id === id ? {
+              ...t,
+              text: this.editingTask.text,
+              value: Number(this.editingTask.value) || 0,
+              icon: this.editingTask.icon
+            } : t
+          )
+        };
+        // Also update in market if that's where we are
+        if (day === 'market') {
+          this.week = { ...this.week, market: [...this.week.market] };
         }
       }
+    } else {
+      // Find match in library (Legacy behavior)
+      this.taskLibrary = this.taskLibrary.map(t =>
+        t.id === this.editingTask.id ? this.editingTask : t
+      );
     }
 
-    this.taskLibrary = this.taskLibrary.map(t =>
-      t.id === this.editingTask.id ? this.editingTask : t
-    );
     this.editingTask = null;
     this._saveData();
   }
@@ -1120,14 +1129,12 @@ class KronanPanel extends LitElement {
   _startEdit(day, id) {
     const item = this.week[day].find(t => t.id === id);
     if (!item) return;
-    this.isEditing = { day, id };
-    this.editData = {
-      text: item.text,
-      // colorIndex removed
-      value: item.value || '',
-      icon: item.icon || '',
-      assignee: item.assignee || ''
+    // Use the new editingTask state for the modern modal
+    this.editingTask = {
+      ...item,
+      day: day // Keep track of which day it belongs to for saving
     };
+    this.isEditing = null; // Ensure legacy modal doesn't trigger
   }
 
   _closeEdit() {
@@ -1193,6 +1200,33 @@ class KronanPanel extends LitElement {
         assignee: assignee || undefined
       }
     ];
+
+    // Immediately apply to current week
+    const newRule = this.recurringRules[this.recurringRules.length - 1];
+    const targetDays = Array.isArray(newRule.days) ? newRule.days : [newRule.days];
+
+    targetDays.forEach(d => {
+      // Check if day exists in current week view (it should)
+      if (this.week[d] || d === 'market') {
+        const newTask = {
+          id: generateId(),
+          text: newRule.text,
+          value: Number(newRule.value) || 0,
+          icon: newRule.icon || '',
+          assignee: newRule.assignee || undefined
+        };
+        // Add to week data
+        if (d === 'market') {
+          this.week.market = [...this.week.market, newTask];
+        } else {
+          this.week = {
+            ...this.week,
+            [d]: [...this.week[d], newTask]
+          };
+        }
+      }
+    });
+
     this._saveData();
   }
 
@@ -1878,56 +1912,7 @@ class KronanPanel extends LitElement {
           </div>
         </footer>
 
-        ${this.isEditing ? (() => {
-        const currentItem = this.week[this.isEditing.day]?.find(t => t.id === this.isEditing.id);
-        return html`
-          <div style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
-            <div style="background:#fff;border-radius:24px;box-shadow:0 8px 40px #0003;padding:32px;min-width:320px;max-width:90vw;">
-              <h2 style="font-size:1.5rem;font-weight:bold;color:#1e293b;margin-bottom:18px;">Redigera uppgift</h2>
-              <div style="margin-bottom:18px;">
-                <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Text</label><br>
-                <input style="width:100%;font-size:1.1rem;padding:8px 12px;border-radius:8px;border:1px solid #ddd;margin-top:4px;" 
-                  .value="${this.editData.text}" @input="${e => this._onEditInput(e, 'text')}">
-              </div>
-              
-              <div style="margin-bottom:18px;">
-                <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Ikon</label><br>
-                <div style="display:flex;gap:4px;overflow-x:auto;width:100%;margin-top:6px;padding-bottom:10px;">
-                  ${ICONS.map(icon => html`
-                    <button style="flex-shrink:0;width:44px;height:44px;border-radius:8px;border:2px solid ${this.editData.icon === icon ? '#6366f1' : '#e5e7eb'};background:#fff;font-size:1.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;"
-                      @click="${() => this._setEditIcon(icon)}">${icon}</button>
-                  `)}
-                </div>
-              </div>
-
-              <div style="margin-bottom:18px;">
-              <div style="margin-bottom:18px;">
-                <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Pris (kr)</label><br>
-                <input type="number" style="width:100%;font-size:1.1rem;padding:8px 12px;border-radius:8px;border:1px solid #ddd;margin-top:4px;" 
-                  .value="${this.editData.value || ''}" @input="${e => this._onEditInput(e, 'value')}">
-              </div>
-              <div style="margin-bottom:18px;">
-                <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Vem ska göra detta?</label><br>
-                <select style="width:100%;font-size:1.1rem;padding:8px 12px;border-radius:8px;border:1px solid #ddd;margin-top:4px;"
-                  .value="${this.editData.assignee || ''}" @input="${e => this._onEditInput(e, 'assignee')}">
-                  <option value="">-- Ingen --</option>
-                  ${this.users.map(u => html`
-                    <option value="${u.name}">${u.name}</option>
-                  `)}
-                </select>
-              </div>
-              <div style="display:flex;gap:10px;margin-top:24px;">
-                <button style="flex:1;background:#ef4444;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;"
-                  @click="${() => this._deleteTask(this.isEditing.day, this.isEditing.id)}">Ta bort</button>
-                <button style="flex:2;background:#6366f1;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;"
-                  @click="${() => this._saveEdit()}">Spara</button>
-                <button style="flex:1;background:#e5e7eb;color:#334155;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;"
-                  @click="${() => this._closeEdit()}">Avbryt</button>
-              </div>
-            </div>
-          </div>
-          `;
-      })() : ''
+        ${'' /* Legacy Modal Removed */}
       }
       </div >
   `;
