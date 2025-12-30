@@ -686,6 +686,73 @@ class KronanPanel extends LitElement {
     this._saveData();
   }
 
+  _cleanupOldData() {
+    const KEEP_COUNT = 10;
+    const allWeeks = Object.keys(this.weeksData).sort();
+
+    // 1. Hantera Veckor
+    if (allWeeks.length > KEEP_COUNT) {
+      const weeksToPrune = allWeeks.slice(0, allWeeks.length - KEEP_COUNT);
+      const weeksToKeep = allWeeks.slice(allWeeks.length - KEEP_COUNT);
+      console.log(`Archiving ${weeksToPrune.length} weeks...`);
+
+      weeksToPrune.forEach(weekId => {
+        const weekObj = this.weeksData[weekId];
+        if (!weekObj || !weekObj.week) return;
+
+        const tasks = weekObj.week;
+        const completed = weekObj.completedTasks || {};
+
+        this.users.forEach(user => {
+          let weekEarnings = 0;
+
+          // A: Veckopeng (Fixed)
+          weekEarnings += Number(user.fixedAllowance || 0);
+
+          // B: Tasks
+          Object.entries(tasks).forEach(([day, taskList]) => {
+            if (Array.isArray(taskList)) {
+              taskList.forEach(task => {
+                const taskKey = `${day}-${task.id}`;
+                if (completed[taskKey] && task.assignee === user.name) {
+                  weekEarnings += Number(task.value || 0);
+                }
+              });
+            }
+          });
+
+          // Lägg till i arkivet
+          user.archivedBalance = (user.archivedBalance || 0) + weekEarnings;
+        });
+      });
+
+      // Spara bara de veckor vi ska behålla
+      const prunedData = {};
+      weeksToKeep.forEach(id => {
+        prunedData[id] = this.weeksData[id];
+      });
+      this.weeksData = prunedData;
+    }
+
+    // 2. Hantera Utbetalningar (Behåll 50 senaste)
+    if (this.payouts && this.payouts.length > 50) {
+      const keptPayouts = this.payouts.slice(-50);
+      const removedPayouts = this.payouts.slice(0, this.payouts.length - 50);
+
+      removedPayouts.forEach(p => {
+        const user = this.users.find(u => u.id === p.userId);
+        if (user) {
+          // Dra av utbetalningen från arkivet (eftersom vi tar bort "minusposten" från listan, måste vi minska "nettot")
+          // Total = (ArkivEarned - ArkivPaid) + (CurrEarned - CurrPaid)
+          // Om p flyttas från CurrPaid till ArkivPaid:
+          // ArkivNet -= p
+          user.archivedBalance = (user.archivedBalance || 0) - Number(p.amount);
+        }
+      });
+      this.payouts = keptPayouts;
+    }
+  }
+
   _calculateTotals() {
     const totals = {};
     this.users.forEach(u => {
@@ -713,31 +780,30 @@ class KronanPanel extends LitElement {
   }
 
   _calculateBalance(userId) {
-    // 1. Summera ALLA intäkter historiskt (Fixed + Tasks)
-    let totalEarned = 0;
+    // 1. Starta med Arkiverat Saldo (historik som rensats bort)
+    const user = this.users.find(u => u.id === userId);
+    let totalEarned = user && user.archivedBalance ? Number(user.archivedBalance) : 0;
 
-    // Gå igenom all historik i weeksData
+    // NOTERA: archivedBalance är "Netto" (Intäkter - Utbetalningar) för den rensade perioden.
+    // Men för enkelhetens skull i denna funktion räknar vi det som "Intäkt" här, 
+    // och drar av ALLA KVARVARANDE utbetalningar nedan.
+    // Om vi rensar utbetalningar också, måste vi ha dragit av dem från archivedBalance vid rensningstillfället.
+
+    // 2. Summera intäkter från KVARVARANDE historik (Fixed + Tasks)
     if (this.weeksData) {
       Object.entries(this.weeksData).forEach(([weekId, weekObj]) => {
-        // Kontrollera om denna veckodata har 'week' och 'completedTasks'
         const tasks = weekObj.week;
         const completed = weekObj.completedTasks || {};
 
-        // Hitta användarens fixedAllowance (vi använder nuvarande värde som approximation för enkelhet)
-        // (En mer exakt metod vore att spara allowance history, men detta duger oftast)
-        const user = this.users.find(u => u.id === userId);
         if (user) {
           totalEarned += user.fixedAllowance;
         }
 
-        // Summera avklarade tasks i denna vecka
         if (tasks) {
           Object.entries(tasks).forEach(([day, taskList]) => {
             taskList.forEach(task => {
               const taskKey = `${day}-${task.id}`;
-              // Kolla om uppgiften är checkad (true)
               if (completed[taskKey] && task.assignee) {
-                // Måste matcha assignee namn mot userId
                 const u = this.users.find(usr => usr.name === task.assignee);
                 if (u && u.id === userId) {
                   totalEarned += Number(task.value || 0);
@@ -749,7 +815,7 @@ class KronanPanel extends LitElement {
       });
     }
 
-    // 2. Summera ALLA utbetalningar
+    // 3. Summera KVARVARANDE utbetalningar
     let totalPaid = 0;
     if (this.payouts) {
       this.payouts.forEach(p => {
@@ -974,17 +1040,8 @@ class KronanPanel extends LitElement {
     // Spara först ner nuvarande vy till weeksData innan vi sparar till disk
     this._persistCurrentView();
 
-    // --- PRUNING: Behåll bara de 5 senaste veckorna ---
-    const allWeeks = Object.keys(this.weeksData).sort(); // Sorterar tex ['2025-W10', '2025-W11', ...]
-    if (allWeeks.length > 5) {
-      const weeksToKeep = allWeeks.slice(-5);
-      const prunedData = {};
-      weeksToKeep.forEach(id => {
-        prunedData[id] = this.weeksData[id];
-      });
-      this.weeksData = prunedData;
-      console.log("Rensade gamla veckor. Behåller:", weeksToKeep);
-    }
+    // --- PRUNING: Arkivera och rensa gammal data (behåll ca 10 veckor) ---
+    this._cleanupOldData();
     // ---------------------------------------------------
 
     // Samla all data vi vill spara
