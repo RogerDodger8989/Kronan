@@ -839,6 +839,11 @@ class KronanPanel extends LitElement {
             }
           }
 
+          // Respect explicitly disabled allowance (e.g. Deleted Week)
+          if (weekObj.week.allowanceDisabled) {
+            shouldAddAllowance = false;
+          }
+
           if (shouldAddAllowance) {
             totalEarned += user.fixedAllowance;
           }
@@ -1485,105 +1490,109 @@ class KronanPanel extends LitElement {
     this.payouts = [];
     this._saveData();
 
-    // On expire (commit) - clear snapshot
-    this.undoSnapshot = null;
-  });
-}
-
-_getDateFromWeekId(weekId) {
-  // Format: YYYY-Www or YYYY-ww
-  // Simple approx: First day of that week?
-  try {
-    const parts = weekId.split('-W');
-    if (parts.length === 2) {
-      const y = parseInt(parts[0]);
-      const w = parseInt(parts[1]);
-      const simple = new Date(y, 0, 1 + (w - 1) * 7);
-      return simple.getTime();
-    }
-  } catch (e) { }
-  return 0;
-}
-
-_restorePayouts() {
-  if (this.undoSnapshot) {
-    if (this.undoSnapshot.payouts) this.payouts = this.undoSnapshot.payouts;
-    if (this.undoSnapshot.users) this.users = this.undoSnapshot.users;
-    this.undoSnapshot = null;
-    this._saveData();
-    this.toast = { visible: false, message: '', actions: [], countdown: 0 };
+    // Show Undo Toast
+    this._showToast("Historik nollställd (5s)", [
+      { label: "Ångra", onClick: () => this._restorePayouts() }
+    ], 5, () => {
+      // On expire (commit) - clear snapshot
+      this.undoSnapshot = null;
+    });
   }
-}
 
-_onEditInput(e, field) {
-  this.editData = { ...this.editData, [field]: e.target.value };
-}
-
-_setEditColor(idx) {
-  // Deprecated
-}
-
-_setEditIcon(icon) {
-  this.editData = { ...this.editData, icon: icon };
-}
-
-// --- Toast & Delete Week Logic ---
-
-_showToast(message, actions = [], countdown = 0) {
-  this.toast = { visible: true, message, actions, countdown };
-  // Clear previous timer if any
-  if (this.toastTimer) clearInterval(this.toastTimer);
-
-  if (countdown > 0) {
-    this.toastTimer = setInterval(() => {
-      if (this.toast.countdown > 1) {
-        this.toast = { ...this.toast, countdown: this.toast.countdown - 1 };
-      } else {
-        clearInterval(this.toastTimer);
-        this.toast = { visible: false, message: '', actions: [] };
-        this.undoSnapshot = null; // Clear undo capability
+  _getDateFromWeekId(weekId) {
+    // Format: YYYY-Www or YYYY-ww
+    // Simple approx: First day of that week?
+    try {
+      const parts = weekId.split('-W');
+      if (parts.length === 2) {
+        const y = parseInt(parts[0]);
+        const w = parseInt(parts[1]);
+        const simple = new Date(y, 0, 1 + (w - 1) * 7);
+        return simple.getTime();
       }
-    }, 1000);
+    } catch (e) { }
+    return 0;
   }
-}
 
-_requestDeleteWeek() {
-  this._showToast('Vill du rensa hela veckan?', [
-    { label: 'Avbryt', onClick: () => this.toast = { visible: false } },
-    { label: 'Radera', onClick: () => this._confirmDeleteWeek(), critical: true }
-  ]);
-}
+  _restorePayouts() {
+    if (this.undoSnapshot) {
+      if (this.undoSnapshot.payouts) this.payouts = this.undoSnapshot.payouts;
+      if (this.undoSnapshot.users) this.users = this.undoSnapshot.users;
+      this.undoSnapshot = null;
+      this._saveData();
+      this.toast = { visible: false, message: '', actions: [], countdown: 0 };
+    }
+  }
 
-_confirmDeleteWeek() {
-  // Snapshot
-  this.undoSnapshot = JSON.parse(JSON.stringify(this.week));
+  _onEditInput(e, field) {
+    this.editData = { ...this.editData, [field]: e.target.value };
+  }
 
-  // Clear
-  const emptyWeek = { market: [] };
-  DAYS.forEach(d => emptyWeek[d] = []);
-  this.week = emptyWeek;
-  this._saveData();
+  _setEditColor(idx) {
+    // Deprecated
+  }
 
-  // Show Undo Toast
-  this._showToast('Veckan raderad', [
-    { label: 'Ångra', onClick: () => this._restoreWeek() }
-  ], 5);
-}
+  _setEditIcon(icon) {
+    this.editData = { ...this.editData, icon: icon };
+  }
 
-_restoreWeek() {
-  if (this.undoSnapshot) {
-    this.week = this.undoSnapshot;
-    this._saveData();
-    this.undoSnapshot = null;
+  // --- Toast & Delete Week Logic ---
+
+  _showToast(message, actions = [], countdown = 0) {
+    this.toast = { visible: true, message, actions, countdown };
+    // Clear previous timer if any
     if (this.toastTimer) clearInterval(this.toastTimer);
-    this._showToast('Veckan återställd!');
-    setTimeout(() => this.toast = { visible: false }, 3000);
-  }
-}
 
-render() {
-  const totals = this._calculateTotals();
-  return html`
+    if (countdown > 0) {
+      this.toastTimer = setInterval(() => {
+        if (this.toast.countdown > 1) {
+          this.toast = { ...this.toast, countdown: this.toast.countdown - 1 };
+        } else {
+          clearInterval(this.toastTimer);
+          this.toast = { visible: false, message: '', actions: [] };
+          this.undoSnapshot = null; // Clear undo capability
+        }
+      }, 1000);
+    }
+  }
+
+  _requestDeleteWeek() {
+    this._showToast('Vill du rensa hela veckan?', [
+      { label: 'Avbryt', onClick: () => this.toast = { visible: false } },
+      { label: 'Radera', onClick: () => this._confirmDeleteWeek(), critical: true }
+    ]);
+  }
+
+  _confirmDeleteWeek() {
+    // Snapshot
+    this.undoSnapshot = JSON.parse(JSON.stringify(this.week));
+
+    // Clear
+    const emptyWeek = { market: [], allowanceDisabled: true }; // Flag to prevent fixed allowance for this deleted week
+    DAYS.forEach(d => emptyWeek[d] = []);
+    this.week = emptyWeek;
+    this._saveData();
+
+    // Show Undo Toast
+    this._showToast('Veckan raderad', [
+      { label: 'Ångra', onClick: () => this._restoreWeek() }
+    ], 5);
+  }
+
+  _restoreWeek() {
+    if (this.undoSnapshot) {
+      this.week = this.undoSnapshot;
+      this._saveData();
+      this.undoSnapshot = null;
+      if (this.toastTimer) clearInterval(this.toastTimer);
+      this._showToast('Veckan återställd!');
+      setTimeout(() => this.toast = { visible: false }, 3000);
+    }
+  }
+
+  render() {
+    const totals = this._calculateTotals();
+    return html`
       <div class="main">
         <header class="header">
           <div class="crown">${this._crownIcon()}</div>
@@ -1595,8 +1604,8 @@ render() {
                 <h1 style="margin:0;font-size:1.8rem;color:var(--text-primary);display:flex;align-items:center;gap:10px;">
                   Vecka ${getWeekNumber(this.currentDate)}
                   ${getWeekIdentifier(this.currentDate) === getWeekIdentifier(new Date())
-      ? html`<span style="background:#10b981;color:#fff;font-size:0.9rem;padding:2px 8px;border-radius:12px;font-weight:bold;vertical-align:middle;">NU</span>`
-      : ''}
+        ? html`<span style="background:#10b981;color:#fff;font-size:0.9rem;padding:2px 8px;border-radius:12px;font-weight:bold;vertical-align:middle;">NU</span>`
+        : ''}
                 </h1>
                 <p style="margin:0;color:var(--text-secondary);font-size:0.95rem;font-weight:500;">
                   ${getWeekRange(this.currentDate)}
@@ -1743,8 +1752,8 @@ render() {
                     <div style="display:flex;flex-direction:column;gap:16px;">
                       <h4 style="font-weight:bold;color:#1e293b;font-size:1rem;margin-bottom:6px;">Saldo & Utbetalning</h4>
                       ${this.users.map(u => {
-        const bal = this._calculateBalance(u.id);
-        return html`
+          const bal = this._calculateBalance(u.id);
+          return html`
                           <div style="background:#fff;padding:16px;border-radius:14px;border:1px solid #e5e7eb;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                               <div style="display:flex;align-items:center;gap:10px;">
@@ -1755,9 +1764,9 @@ render() {
                                 </div>
                               </div>
                               <button @click="${() => {
-            this.payoutUser = u;
-            this.showPayoutModal = true;
-          }}" style="background:#ef4444;color:#fff;padding:6px 14px;border-radius:8px;border:none;font-weight:bold;cursor:pointer;">Betala ut</button>
+              this.payoutUser = u;
+              this.showPayoutModal = true;
+            }}" style="background:#ef4444;color:#fff;padding:6px 14px;border-radius:8px;border:none;font-weight:bold;cursor:pointer;">Betala ut</button>
                             </div>
                             <div style="display:flex;gap:12px;font-size:0.85rem;background:#f8fafc;padding:8px;border-radius:8px;">
                               <div style="flex:1;">
@@ -1771,20 +1780,20 @@ render() {
                             </div>
                           </div>
                         `;
-      })}
+        })}
                       
                       <div style="margin-top:12px;">
                         <h4 style="font-weight:bold;color:#64748b;font-size:0.9rem;margin-bottom:8px;">Senaste utbetalningar</h4>
                         ${this.payouts.slice().reverse().slice(0, 5).map(p => {
-        const u = this.users.find(usr => usr.id === p.userId);
-        return html`
+          const u = this.users.find(usr => usr.id === p.userId);
+          return html`
                             <div style="display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:6px 0;font-size:0.9rem;">
                               <span style="color:var(--text-primary);">${u ? u.name : 'Okänd'}</span>
                               <span style="color:#64748b;">${p.date.slice(0, 10)}</span>
                               <span style="font-weight:bold;color:#ef4444;">-${p.amount} kr</span>
                             </div>
                           `;
-      })}
+        })}
                         ${this.payouts.length === 0 ? html`<div style="color:#94a3b8;font-size:0.9rem;">Inga utbetalningar registrerade än.</div>` : ''}
                       </div>
 
@@ -1801,45 +1810,45 @@ render() {
                     <div style="background:#f3e8ff;padding:18px;border-radius:14px;margin-bottom:18px;">
                       <h4 style="font-weight:bold;color:#6b21a8;font-size:1rem;margin-bottom:10px;">Skapa regel</h4>
                       <form @submit="${e => {
-          e.preventDefault();
-          if (this.selectedRecurringDays.length === 0) {
-            alert('Välj minst en dag!');
-            return;
-          }
-          const formData = new FormData(e.target);
-          this._addRecurringRule(
-            this.selectedRecurringDays, // Pass array
-            formData.get('text'),
-            formData.get('value'),
-            formData.get('icon'),
-            formData.get('assignee')
-            // formData.get('interval') and 'startOffset' removed
-          );
-          this.selectedRecurringDays = []; // Reset days
-          e.target.reset();
-        }}" style="display:flex;flex-direction:column;gap:10px;">
+            e.preventDefault();
+            if (this.selectedRecurringDays.length === 0) {
+              alert('Välj minst en dag!');
+              return;
+            }
+            const formData = new FormData(e.target);
+            this._addRecurringRule(
+              this.selectedRecurringDays, // Pass array
+              formData.get('text'),
+              formData.get('value'),
+              formData.get('icon'),
+              formData.get('assignee')
+              // formData.get('interval') and 'startOffset' removed
+            );
+            this.selectedRecurringDays = []; // Reset days
+            e.target.reset();
+          }}" style="display:flex;flex-direction:column;gap:10px;">
                         
                         <!-- Day Chips Selector -->
                         <div>
                           <label style="font-size:0.8rem;font-weight:bold;color:#6b21a8;margin-bottom:4px;display:block;">Välj dagar:</label>
                           <div style="display:flex;flex-wrap:wrap;gap:6px;">
                             ${[...DAYS, 'market'].map(d => {
-          const isSelected = this.selectedRecurringDays.includes(d);
-          const label = d === 'market' ? '🛒 Marknad' : d.substring(0, 3);
-          return html`
+            const isSelected = this.selectedRecurringDays.includes(d);
+            const label = d === 'market' ? '🛒 Marknad' : d.substring(0, 3);
+            return html`
                                 <button type="button" 
                                   @click="${() => {
-              if (isSelected) {
-                this.selectedRecurringDays = this.selectedRecurringDays.filter(day => day !== d);
-              } else {
-                this.selectedRecurringDays = [...this.selectedRecurringDays, d];
-              }
-            }}"
+                if (isSelected) {
+                  this.selectedRecurringDays = this.selectedRecurringDays.filter(day => day !== d);
+                } else {
+                  this.selectedRecurringDays = [...this.selectedRecurringDays, d];
+                }
+              }}"
                                   style="padding:6px 10px;border-radius:12px;border:1px solid ${isSelected ? '#8b5cf6' : '#e9d5ff'};background:${isSelected ? '#8b5cf6' : '#fff'};color:${isSelected ? '#fff' : '#6b21a8'};font-size:0.85rem;font-weight:bold;cursor:pointer;transition:all 0.1s;">
                                   ${label}
                                 </button>
                               `;
-        })}
+          })}
                             <button type="button" 
                               @click="${() => this.selectedRecurringDays = [...DAYS]}"
                               style="padding:6px 10px;border-radius:12px;border:1px solid #c084fc;background:#f3e8ff;color:#6b21a8;font-weight:bold;cursor:pointer;">
@@ -1860,14 +1869,14 @@ render() {
                         <!-- Helper to pick from library -->
                         <select style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e9d5ff;font-size:0.9rem;color:#6b21a8;" 
                           @change="${e => {
-          const t = this.taskLibrary.find(x => x.id === e.target.value);
-          if (t) {
-            const form = e.target.closest('form');
-            form.querySelector('[name=text]').value = t.text;
-            form.querySelector('[name=value]').value = t.value;
-            form.querySelector('[name=icon]').value = t.icon || '';
-          }
-        }}">
+            const t = this.taskLibrary.find(x => x.id === e.target.value);
+            if (t) {
+              const form = e.target.closest('form');
+              form.querySelector('[name=text]').value = t.text;
+              form.querySelector('[name=value]').value = t.value;
+              form.querySelector('[name=icon]').value = t.icon || '';
+            }
+          }}">
                           <option value="">-- Hämta info från biblioteket (fyller i nedan) --</option>
                           ${this.taskLibrary.map(t => html`<option value="${t.id}">${t.icon} ${t.text} (${t.value} kr)</option>`)}
                         </select>
@@ -1890,11 +1899,11 @@ render() {
                           <div>
                             <span style="font-size:0.8rem;font-weight:bold;color:#8b5cf6;text-transform:uppercase;">
                               ${(() => {
-            if (r.days && Array.isArray(r.days)) {
-              return r.days.map(d => d === 'market' ? '🛒' : d.substring(0, 3)).join(', ');
-            }
-            return r.day === 'market' ? '🛒 Marknad' : r.day;
-          })()}
+              if (r.days && Array.isArray(r.days)) {
+                return r.days.map(d => d === 'market' ? '🛒' : d.substring(0, 3)).join(', ');
+              }
+              return r.day === 'market' ? '🛒 Marknad' : r.day;
+            })()}
                             </span>
                             <div style="font-weight:500;color:#334155;">${r.icon} ${r.text} <span style="color:#94a3b8;font-size:0.9rem;">(${r.value} kr)</span></div>
                             ${r.assignee ? html`<div style="font-size:0.8rem;color:#64748b;">👤 ${r.assignee}</div>` : ''}
@@ -1936,7 +1945,7 @@ render() {
               </div>
             </div>
           ` : ''
-    }
+      }
 
           ${this.showPayoutModal && this.payoutUser ? html`
             <div style="position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">
@@ -1949,10 +1958,10 @@ render() {
                       style="flex:1;font-size:1.2rem;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-app);color:var(--text-primary);" autofocus>
                     <button style="background:var(--accent-color);color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:bold;"
                       @click="${() => {
-        const balance = this._calculateBalance(this.payoutUser.id).balance;
-        const input = this.shadowRoot.getElementById('payoutInput');
-        input.value = balance;
-      }}">Max</button>
+          const balance = this._calculateBalance(this.payoutUser.id).balance;
+          const input = this.shadowRoot.getElementById('payoutInput');
+          input.value = balance;
+        }}">Max</button>
                   </div>
                   <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:4px;">
                     Max belopp: ${this._calculateBalance(this.payoutUser.id).balance} kr
@@ -1963,19 +1972,19 @@ render() {
                     @click="${() => { this.showPayoutModal = false; this.payoutUser = null; }}">Avbryt</button>
                   <button style="flex:1;background:#ef4444;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;"
                     @click="${() => {
-        const input = this.shadowRoot.getElementById('payoutInput');
-        const amount = Number(input.value);
-        if (amount > 0) {
-          this._registerPayout(this.payoutUser.id, amount);
-          this.showPayoutModal = false;
-          this.payoutUser = null;
-        }
-      }}">Bekräfta</button>
+          const input = this.shadowRoot.getElementById('payoutInput');
+          const amount = Number(input.value);
+          if (amount > 0) {
+            this._registerPayout(this.payoutUser.id, amount);
+            this.showPayoutModal = false;
+            this.payoutUser = null;
+          }
+        }}">Bekräfta</button>
                 </div>
               </div>
             </div>
           ` : ''
-    }
+      }
 
           ${this.editingUser ? html`
             <div style="position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">
@@ -2021,7 +2030,7 @@ render() {
               </div>
             </div>
           ` : ''
-    }
+      }
 
           ${this.editingTask ? html`
             <div style="position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
@@ -2080,7 +2089,7 @@ render() {
               </div>
             </div>
           ` : ''
-    }
+      }
 
           ${this.showAddTaskModal ? html`
             <div style="position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
@@ -2095,21 +2104,21 @@ render() {
                     <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Välj dagar</label><br>
                     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
                       ${DAYS.map(d => {
-      const isSelected = this.selectedRecurringDays.includes(d);
-      return html`
+        const isSelected = this.selectedRecurringDays.includes(d);
+        return html`
                           <button type="button" 
                             @click="${() => {
-          if (isSelected) {
-            this.selectedRecurringDays = this.selectedRecurringDays.filter(day => day !== d);
-          } else {
-            this.selectedRecurringDays = [...this.selectedRecurringDays, d];
-          }
-        }}"
+            if (isSelected) {
+              this.selectedRecurringDays = this.selectedRecurringDays.filter(day => day !== d);
+            } else {
+              this.selectedRecurringDays = [...this.selectedRecurringDays, d];
+            }
+          }}"
                             style="padding:6px 10px;border-radius:12px;border:1px solid ${isSelected ? '#8b5cf6' : '#e9d5ff'};background:${isSelected ? '#8b5cf6' : '#fff'};color:${isSelected ? '#fff' : '#6b21a8'};font-size:0.85rem;font-weight:bold;cursor:pointer;">
                             ${d.substring(0, 3)}
                           </button>
                         `;
-    })}
+      })}
                       <button type="button" 
                         @click="${() => this.selectedRecurringDays = [...DAYS]}"
                         style="padding:6px 10px;border-radius:12px;border:1px solid #c084fc;background:#f3e8ff;color:#6b21a8;font-weight:bold;cursor:pointer;">
@@ -2160,7 +2169,7 @@ render() {
               </div>
             </div>
           ` : ''
-    }
+      }
 
           ${this.showMoveCopyModal && this.moveCopyData ? html`
             <div style="position:fixed;inset:0;z-index:2600;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
@@ -2204,7 +2213,7 @@ render() {
               </div>
             </div>
           ` : ''
-    }
+      }
         </header >
 
         <main class="week-board">
@@ -2252,9 +2261,9 @@ render() {
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                       ${item.assignee ? html`<div style="font-size:0.95rem;font-weight:bold;color:#334155;">
                         ${(() => {
-          const u = this.users.find(user => user.name === item.assignee);
-          return u && u.icon ? u.icon + ' ' : '👤 ';
-        })()}${item.assignee}</div>` : html`<div></div>`}
+            const u = this.users.find(user => user.name === item.assignee);
+            return u && u.icon ? u.icon + ' ' : '👤 ';
+          })()}${item.assignee}</div>` : html`<div></div>`}
                       ${item.value ? html`<span style="background:#10b981;color:#fff;padding:2px 8px;border-radius:6px;font-size:0.9rem;font-weight:bold;">${item.value} kr</span>` : html`<div></div>`}
                     </div>
                   </div>
@@ -2269,17 +2278,17 @@ render() {
               <h3 style="font-size:1rem;font-weight:bold;color:#10b981;margin:0;">Veckosummering</h3>
               <div style="display:flex;gap:18px;flex-wrap:wrap;">
           ${Object.entries(totals).map(([name, data]) => {
-          const userColor = data.colorIndex !== undefined ? COLORS[data.colorIndex].bg : '#f1f5f9';
-          const u = this.users.find(user => user.name === name);
-          const bal = u ? this._calculateBalance(u.id) : { balance: 0 };
-          return html`
+            const userColor = data.colorIndex !== undefined ? COLORS[data.colorIndex].bg : '#f1f5f9';
+            const u = this.users.find(user => user.name === name);
+            const bal = u ? this._calculateBalance(u.id) : { balance: 0 };
+            return html`
                   <div style="display:flex;align-items:center;gap:10px;background:${userColor};border:1px solid #e5e7eb;padding:8px 18px;border-radius:14px;">
                     <div style="display:flex;flex-direction:column;">
                       <span style="font-size:0.95rem;font-weight:bold;color:#334155;">
                         ${(() => {
-              const u = this.users.find(user => user.name === name);
-              return u && u.icon ? u.icon + ' ' : '';
-            })()}${name}
+                const u = this.users.find(user => user.name === name);
+                return u && u.icon ? u.icon + ' ' : '';
+              })()}${name}
                       </span>
                       <span style="font-size:0.8rem;color:#64748b;">Fast: ${data.fixed} kr</span>
                       <span style="font-size:0.8rem;font-weight:bold;color:${bal.balance >= 0 ? '#059669' : '#dc2626'};">Saldo: ${bal.balance} kr</span>
@@ -2293,7 +2302,7 @@ render() {
                     </div>
                   </div>
                 `;
-        })}
+          })}
               ${Object.keys(totals).length === 0 ? html`<span style="color:#64748b;font-size:0.95rem;">Lägg till personer och uppgifter för att se summering.</span>` : ''}
             </div>
             </div>
@@ -2320,8 +2329,8 @@ render() {
                   <button 
                     @click="${action.onClick}" 
                     style="padding:6px 12px;border-radius:8px;font-size:0.9rem;font-weight:bold;cursor:pointer;border:none;${action.critical
-            ? 'background:#ef4444;color:white;'
-            : 'background:#f1f5f9;color:#334155;'}"
+              ? 'background:#ef4444;color:white;'
+              : 'background:#f1f5f9;color:#334155;'}"
                   >
                     ${action.label}
                   </button>
@@ -2339,17 +2348,17 @@ render() {
 
        </div>
    `;
-}
+  }
 
-_crownIcon() {
-  return html`
+  _crownIcon() {
+    return html`
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M2.5 9l5 2.5L12 3l4.5 8.5L21.5 9l-2 11h-15l-2-11z" fill="currentColor" fill-opacity="0.2"/>
         <path d="M2 9l5 3 5-9 5 9 5-3-2 12H4L2 9z" />
         <path d="M12 16a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="currentColor"/>
       </svg>
     `;
-}
+  }
 }
 
 customElements.define('kronan-panel-v3', KronanPanel);
