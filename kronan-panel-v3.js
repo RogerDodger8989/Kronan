@@ -1867,7 +1867,7 @@ class KronanPanel extends LitElement {
             </div>
             </div>
             <div style="font-size:0.8rem;color:#64748b;text-align:right;">
-              Skapad av Dennis West 2025
+              Skapad av Dennis West 2025 | v2.5 (SYNC ACTIVE)
             </div>
           </div>
         </footer>
