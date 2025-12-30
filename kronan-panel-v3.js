@@ -1037,46 +1037,42 @@ class KronanPanel extends LitElement {
   }
 
   async _saveData() {
-    // Spara först ner nuvarande vy till weeksData innan vi sparar till disk
+    // Spara först ner nuvarande vy till weeksData direkt (för att säkerställa att vi har senaste state)
     this._persistCurrentView();
 
-    // --- PRUNING: Arkivera och rensa gammal data (behåll ca 10 veckor) ---
-    this._cleanupOldData();
-    // ---------------------------------------------------
-
-    // Samla all data vi vill spara
-    const dataToSave = {
-      weeksData: this.weeksData, // NYTT: Spara all historik
-      users: this.users,
-      taskLibrary: this.taskLibrary,
-      templates: this.templates,
-      templates: this.templates,
-      payouts: this.payouts, // NYTT: Spara utbetalningar
-      recurringRules: this.recurringRules, // NYTT: Återkommande uppgifter
-      // completedTasks och week sparas nu inuti weeksData, men vi kanske inte ska spara 'week' på toppnivå längre?
-      // För bakåtkompatibilitet kan vi spara "nuvarande vecka" som 'week' också, men det kan bli förvirrande.
-      // Bättre att bryta bakåtkompatibilitet snyggt: Vi slutar läsa 'week' om 'weeksData' finns.
-    };
-
-    // 1. Spara till Home Assistant om tillgängligt
-    if (this.hass) {
+    // Kör resten asynkront i nästa "tick" för att inte blockera UI (knapptryckningar etc)
+    setTimeout(async () => {
       try {
-        await this.hass.callService('shell_command', 'save_kronan_data', {
-          data: JSON.stringify(dataToSave)
-        });
-        console.log("Data sparad till HA.");
-      } catch (e) {
-        console.error("Kunde inte spara till HA:", e);
-      }
-    }
+        // --- PRUNING: Arkivera och rensa gammal data (behåll ca 10 veckor) ---
+        this._cleanupOldData();
+        // ---------------------------------------------------
 
-    // 2. Spara alltid till LocalStorage som backup/standalone
-    try {
-      localStorage.setItem('kronan_data', JSON.stringify(dataToSave));
-      console.log("Data sparad till LocalStorage.");
-    } catch (e) {
-      console.error("Kunde inte spara till LocalStorage:", e);
-    }
+        // Samla all data vi vill spara
+        const dataToSave = {
+          weeksData: this.weeksData,
+          users: this.users,
+          taskLibrary: this.taskLibrary,
+          templates: this.templates,
+          payouts: this.payouts,
+          recurringRules: this.recurringRules,
+        };
+
+        const dataStr = JSON.stringify(dataToSave);
+
+        // 1. Spara till Home Assistant om tillgängligt (utan await för att inte blockera)
+        if (this.hass) {
+          this.hass.callService('shell_command', 'save_kronan_data', {
+            data: dataStr
+          }).catch(e => console.warn("Kunde inte spara till HA (ignorerar):", e));
+        }
+
+        // 2. Spara alltid till LocalStorage
+        localStorage.setItem('kronan_data', dataStr);
+        console.log("Data sparad.");
+      } catch (e) {
+        console.error("Fel vid sparande av data:", e);
+      }
+    }, 0);
   }
 
   // --- Navigering ---
