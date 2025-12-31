@@ -552,6 +552,40 @@ class KronanPanel extends LitElement {
 
   _addUser(name, allowance) {
     if (!name) return;
+
+    // SAFETY FIX: "Ghost Data" Cleanup
+    // If we are creating "Isak", but there are tasks assigned to "Isak" from a previous (deleted) user,
+    // we MUST rename them first. Otherwise, the new "Isak" inherits them.
+    let ghostsFound = false;
+    const cleanGhostTasks = (list) => {
+      list.forEach(t => {
+        if (t.assignee === name) {
+          t.assignee = `${name} (Raderad)`;
+          ghostsFound = true;
+        }
+      });
+    };
+
+    // Scan Current Week
+    Object.values(this.week).forEach(list => {
+      if (Array.isArray(list)) cleanGhostTasks(list);
+    });
+
+    // Scan History
+    if (this.weeksData) {
+      Object.values(this.weeksData).forEach(data => {
+        if (data.week && typeof data.week === 'object') {
+          Object.values(data.week).forEach(list => {
+            if (Array.isArray(list)) cleanGhostTasks(list);
+          });
+        }
+      });
+    }
+
+    if (ghostsFound) {
+      console.log(`Cleaned up ghost tasks for ${name} before duplicate creation.`);
+    }
+
     this.users = [
       ...this.users,
       {
