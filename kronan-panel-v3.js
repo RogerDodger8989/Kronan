@@ -612,87 +612,95 @@ class KronanPanel extends LitElement {
 
   _deleteUser(id) {
     const user = this.users.find(u => u.id === id);
-    if (user) {
-      if (confirm(`Är du säker på att du vill ta bort ${user.name}? All data raderas.`)) {
+    if (!user) return;
 
-        // --- BACKUP FOR UNDO ---
-        const backup = {
-          user: { ...user },
-          payouts: this.payouts.filter(p => p.userId === id),
-          currentTasks: [],
-          historyTasks: []
-        };
+    // Use Toast for confirmation instead of window.confirm
+    this._showToast(`Radera ${user.name}? All data försvinner.`, [
+      { label: 'Avbryt', onClick: () => { this.toast = { visible: false, message: '', actions: [] }; } },
+      { label: 'Radera', onClick: () => this._performDeleteUser(user), critical: true }
+    ]);
+  }
 
-        // Backup Current Week Tasks
-        Object.keys(this.week).forEach(day => {
-          if (Array.isArray(this.week[day])) {
-            this.week[day].forEach(t => {
-              if (t.assignee === user.name) {
-                backup.currentTasks.push({ day, task: { ...t } });
-              }
-            });
+  _performDeleteUser(user) {
+    const id = user.id;
+    this.toast = { visible: false, message: '', actions: [] }; // Dismiss confirm toast immediately
+
+    // --- BACKUP FOR UNDO ---
+    const backup = {
+      user: { ...user },
+      payouts: this.payouts.filter(p => p.userId === id),
+      currentTasks: [],
+      historyTasks: []
+    };
+
+    // Backup Current Week Tasks
+    Object.keys(this.week).forEach(day => {
+      if (Array.isArray(this.week[day])) {
+        this.week[day].forEach(t => {
+          if (t.assignee === user.name) {
+            backup.currentTasks.push({ day, task: { ...t } });
           }
         });
-
-        // Backup History Tasks
-        if (this.weeksData) {
-          Object.entries(this.weeksData).forEach(([weekId, data]) => {
-            if (data.week) {
-              Object.entries(data.week).forEach(([day, list]) => {
-                if (Array.isArray(list)) {
-                  list.forEach(t => {
-                    if (t.assignee === user.name) {
-                      backup.historyTasks.push({ weekId, day, task: { ...t } });
-                    }
-                  });
-                }
-              });
-            }
-          });
-        }
-        // -----------------------
-
-        // 1. HARD DELETE: Remove tasks from Current Week
-        Object.keys(this.week).forEach(key => {
-          if (Array.isArray(this.week[key])) {
-            this.week[key] = this.week[key].filter(t => t.assignee !== user.name);
-          }
-        });
-
-        // 2. HARD DELETE: Remove tasks from History
-        if (this.weeksData) {
-          Object.values(this.weeksData).forEach(data => {
-            if (data.week) {
-              Object.values(data.week).forEach(list => {
-                if (Array.isArray(list)) {
-                  for (let i = list.length - 1; i >= 0; i--) {
-                    if (list[i].assignee === user.name) {
-                      list.splice(i, 1);
-                    }
-                  }
-                }
-              });
-            }
-          });
-        }
-
-        // 3. HARD DELETE: Remove Payouts
-        if (this.payouts) {
-          this.payouts = this.payouts.filter(p => p.userId !== id);
-        }
-
-        // 4. Remove User
-        this.users = this.users.filter(u => u.id !== id);
-
-        this._saveData();
-
-        // NOTIFICATION WITH UNDO
-        this._showToast(`${user.name} raderad.`, 5000, [{
-          label: 'Ångra',
-          onClick: () => this._restoreDeletedUser(backup)
-        }]);
       }
+    });
+
+    // Backup History Tasks
+    if (this.weeksData) {
+      Object.entries(this.weeksData).forEach(([weekId, data]) => {
+        if (data.week) {
+          Object.entries(data.week).forEach(([day, list]) => {
+            if (Array.isArray(list)) {
+              list.forEach(t => {
+                if (t.assignee === user.name) {
+                  backup.historyTasks.push({ weekId, day, task: { ...t } });
+                }
+              });
+            }
+          });
+        }
+      });
     }
+    // -----------------------
+
+    // 1. HARD DELETE: Remove tasks from Current Week
+    Object.keys(this.week).forEach(key => {
+      if (Array.isArray(this.week[key])) {
+        this.week[key] = this.week[key].filter(t => t.assignee !== user.name);
+      }
+    });
+
+    // 2. HARD DELETE: Remove tasks from History
+    if (this.weeksData) {
+      Object.values(this.weeksData).forEach(data => {
+        if (data.week) {
+          Object.values(data.week).forEach(list => {
+            if (Array.isArray(list)) {
+              for (let i = list.length - 1; i >= 0; i--) {
+                if (list[i].assignee === user.name) {
+                  list.splice(i, 1);
+                }
+              }
+            }
+          });
+        }
+      });
+    }
+
+    // 3. HARD DELETE: Remove Payouts
+    if (this.payouts) {
+      this.payouts = this.payouts.filter(p => p.userId !== id);
+    }
+
+    // 4. Remove User
+    this.users = this.users.filter(u => u.id !== id);
+
+    this._saveData();
+
+    // NOTIFICATION WITH UNDO
+    this._showToast(`${user.name} raderad.`, [{
+      label: 'Ångra',
+      onClick: () => this._restoreDeletedUser(backup)
+    }], 5);
   }
 
   _restoreDeletedUser(backup) {
