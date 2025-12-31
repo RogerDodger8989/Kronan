@@ -926,8 +926,9 @@ class KronanPanel extends LitElement {
           let shouldAddAllowance = true;
           if (user.createdAt) {
             const weekDate = this._getDateFromWeekId(weekId);
-            // SAFETY FIX 1: STRICT check. If week started BEFORE user creation, ignore it.
-            if (!weekDate || (weekDate < user.createdAt - 86400000)) {
+            // SAFETY FIX 1: STRICT check. If week started BEFORE user creation (minus 1 week buffer), ignore it.
+            // Buffer increased to 7 days to ensure users created mid-week still get paid for THAT week.
+            if (!weekDate || (weekDate < user.createdAt - 604800000)) {
               shouldAddAllowance = false;
             }
             // SAFETY FIX 2: NO FUTURES. If week is in the future, no allowance yet.
