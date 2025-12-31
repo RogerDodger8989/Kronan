@@ -1,11 +1,11 @@
 ﻿import { LitElement, html, css } from "https://cdn.jsdelivr.net/npm/lit@3/+esm";
 
 // --- Datastrukturer & Konstanter ---
-const DAYS = ['MÃ¥ndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'LÃ¶rdag', 'SÃ¶ndag'];
+const DAYS = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag'];
 const COLORS = [
   { bg: '#fef08a', border: '#facc15', name: 'Gul' },
-  { bg: '#bae6fd', border: '#38bdf8', name: 'BlÃ¥' },
-  { bg: '#bbf7d0', border: '#22d3ee', name: 'GrÃ¶n' },
+  { bg: '#bae6fd', border: '#38bdf8', name: 'Blå' },
+  { bg: '#bbf7d0', border: '#22d3ee', name: 'Grön' },
   { bg: '#fbcfe8', border: '#ec4899', name: 'Rosa' },
   { bg: '#e9d5ff', border: '#a21caf', name: 'Lila' },
   { bg: '#fff', border: '#d1d5db', name: 'Vit' },
@@ -13,18 +13,18 @@ const COLORS = [
 
 const ICONS = [
   // Special
-  'ðŸ‘‘', 'â­', 'ðŸŒŸ', 'ðŸ’«', 'â˜€ï¸', 'ðŸŒ™', 'â¤ï¸', 'âœ…',
+  '👑', '⭐', '🌟', '💫', '☀️', '🌙', '❤️', '✅',
   // Cleaning & Chores
-  'ðŸ§¹', 'ðŸª£', 'ðŸ§½', 'ðŸ§¼', 'ðŸ§º', 'ðŸ—‘ï¸', 'ðŸš½', 'ðŸª ', 'ðŸš¿', 'ðŸ›', 'ðŸ§´', 'ðŸ§»',
-  'ðŸ½ï¸', 'ðŸ¥£', 'ðŸ´', 'ðŸ¥„', 'ðŸ¥¢', 'ðŸ§Š', 'ðŸ§‚',
-  'ðŸ³', 'ðŸ¥˜', 'ðŸ²', 'ðŸ§‚', 'ðŸ¥¦', 'ðŸ¥•', 'ðŸŽ', 'ðŸŒ',
+  '🧹', '🪣', '🧽', '🧼', '🧺', '🗑️', '🚽', '🪠', '🚿', '🛁', '🧴', '🧻',
+  '🍽️', '🥣', '🍴', '🥄', '🥢', '🧊', '🧂',
+  '🍳', '🥘', '🍲', '🧂', '🥦', '🥕', '🍎', '🍌',
   // Home & Maintenance
-  'ðŸ›ï¸', 'ðŸ›‹ï¸', 'ðŸª´', 'ðŸ“¦', 'ðŸªœ', 'ðŸ”§', 'ðŸ”¨', 'ðŸª›', 'âœ‚ï¸', 'ðŸ”Œ', 'ðŸ’¡',
-  'ðŸ‘•', 'ðŸ‘–', 'ðŸ‘—', 'ðŸ‘Ÿ', 'ðŸ•¶ï¸',
+  '🛏️', '🛋️', '🪴', '📦', '🪜', '🔧', '🔨', '🪛', '✂️', '🔌', '💡',
+  '👕', '👖', '👗', '👟', '🕶️',
   // People & Pets
-  'ðŸ‘¨', 'ðŸ‘©', 'ðŸ§‘', 'ðŸ‘§', 'ðŸ‘¦', 'ðŸ‘¶', 'ðŸ¶', 'ðŸ±', 'ðŸ¾',
+  '👨', '👩', '🧑', '👧', '👦', '👶', '🐶', '🐱', '🐾',
   // Study/Work & Misc
-  'ðŸ“š', 'âœï¸', 'ðŸ’»', 'ðŸ“±', 'ðŸŽ¨', 'ðŸŽ®', 'ðŸš—', 'ðŸš²'
+  '📚', '✏️', '💻', '📱', '🎨', '🎮', '🚗', '🚲'
 ];
 
 function generateId() {
@@ -626,7 +626,7 @@ class KronanPanel extends LitElement {
     if (!user) return;
 
     // Use Toast for confirmation instead of window.confirm
-    this._showToast(`Radera ${user.name}? All data fÃ¶rsvinner.`, [
+    this._showToast(`Radera ${user.name}? All data försvinner.`, [
       { label: 'Avbryt', onClick: () => { this.toast = { visible: false, message: '', actions: [] }; } },
       { label: 'Radera', onClick: () => this._performDeleteUser(user), critical: true }
     ]);
@@ -709,7 +709,7 @@ class KronanPanel extends LitElement {
 
     // NOTIFICATION WITH UNDO
     this._showToast(`${user.name} raderad.`, [{
-      label: 'Ã…ngra',
+      label: 'Ångra',
       onClick: () => this._restoreDeletedUser(backup)
     }], 5);
   }
@@ -736,7 +736,7 @@ class KronanPanel extends LitElement {
     });
 
     this._saveData();
-    this._showToast(`${backup.user.name} Ã¥terstÃ¤lld.`, 3000);
+    this._showToast(`${backup.user.name} återställd.`, 3000);
   }
   _setNewUserColor(idx) {
     this.newUserColor = idx;
@@ -863,7 +863,7 @@ class KronanPanel extends LitElement {
     if (!this.moveCopyData) return;
     const { item, sourceDay, targetDay } = this.moveCopyData;
 
-    // Ta bort frÃ¥n kÃ¤llan och lÃ¤gg till i mÃ¥let (flytta)
+    // Ta bort från kÃ¤llan och lÃ¤gg till i mÃ¥let (flytta)
     const newSource = this.week[sourceDay].filter(i => i.id !== item.id);
     const newTarget = [...this.week[targetDay], item];
     this.week = { ...this.week, [sourceDay]: newSource, [targetDay]: newTarget };
@@ -950,9 +950,9 @@ class KronanPanel extends LitElement {
       removedPayouts.forEach(p => {
         const user = this.users.find(u => u.id === p.userId);
         if (user) {
-          // Dra av utbetalningen frÃ¥n arkivet (eftersom vi tar bort "minusposten" frÃ¥n listan, mÃ¥ste vi minska "nettot")
+          // Dra av utbetalningen från arkivet (eftersom vi tar bort "minusposten" från listan, mÃ¥ste vi minska "nettot")
           // Total = (ArkivEarned - ArkivPaid) + (CurrEarned - CurrPaid)
-          // Om p flyttas frÃ¥n CurrPaid till ArkivPaid:
+          // Om p flyttas från CurrPaid till ArkivPaid:
           // ArkivNet -= p
           user.archivedBalance = (user.archivedBalance || 0) - Number(p.amount);
         }
@@ -972,11 +972,11 @@ class KronanPanel extends LitElement {
       };
     });
 
-    // RÃ¤kna bara AVKLARADE uppgifter (Ã¶verstrukna)
+    // Räkna bara AVKLARADE uppgifter (överstrukna)
     Object.entries(this.week).forEach(([day, tasks]) => {
       tasks.forEach(item => {
         const taskKey = `${day}-${item.id}`;
-        // Om uppgiften Ã„R avklarad (Ã¶verstruken), rÃ¤kna med den
+        // Om uppgiften ÄR avklarad (Ã¶verstruken), rÃ¤kna med den
         if (this.completedTasks[taskKey] && item.assignee && totals[item.assignee]) {
           totals[item.assignee].tasks += Number(item.value || 0);
           totals[item.assignee].total += Number(item.value || 0);
@@ -993,7 +993,7 @@ class KronanPanel extends LitElement {
       const user = this.users.find(u => u.id === userId);
       let totalEarned = user && user.archivedBalance ? Number(user.archivedBalance) : 0;
 
-      // 2. Summera intÃ¤kter frÃ¥n KVARVARANDE historik (Fixed + Tasks)
+      // 2. Summera intäkter från KVARVARANDE historik (Fixed + Tasks)
       if (this.weeksData) {
         Object.entries(this.weeksData).forEach(([weekId, weekObj]) => {
           const tasks = weekObj.week;
@@ -1184,10 +1184,10 @@ class KronanPanel extends LitElement {
       if (requestFullScreen) {
         requestFullScreen.call(docEl).catch(err => {
           console.error(`Error attempting to enable fullscreen: ${err.message}`);
-          window.alert(`Kunde inte starta helskÃ¤rm: ${err.message}\n(Om du kÃ¶r via Home Assistant kan detta vara begrÃ¤nsat av webblÃ¤saren/appen)`);
+          window.alert(`Kunde inte starta helskärm: ${err.message}\n(Om du kÃ¶r via Home Assistant kan detta vara begränsat av webbläsaren/appen)`);
         });
       } else {
-        window.alert("HelskÃ¤rm stÃ¶ds inte av din webblÃ¤sare.");
+        window.alert("Helskärm stöds inte av din webbläsare.");
       }
     } else {
       if (cancelFullScreen) {
@@ -1201,7 +1201,7 @@ class KronanPanel extends LitElement {
     this.loading = true;
     let loaded = false;
 
-    // 1. FÃ¶rsÃ¶k ladda frÃ¥n VÃ…R EGEN SERVER (/api/data)
+    // 1. Försök ladda från VÅR EGEN SERVER (/api/data)
     try {
       const response = await fetch('/api/data?v=' + new Date().getTime());
       if (response.ok) {
@@ -1211,11 +1211,11 @@ class KronanPanel extends LitElement {
         } else {
           this._applyLoadedData(parsed);
           loaded = true;
-          console.log("Data laddad frÃ¥n Server.");
+          console.log("Data laddad från Server.");
         }
       }
     } catch (e) {
-      console.error("Kunde inte ladda frÃ¥n Server:", e);
+      console.error("Kunde inte ladda från Server:", e);
     }
 
     // 2. Fallback: LocalStorage (Backup)
@@ -1226,10 +1226,10 @@ class KronanPanel extends LitElement {
           const parsed = JSON.parse(local);
           this._applyLoadedData(parsed);
           loaded = true;
-          console.log("Data laddad frÃ¥n LocalStorage (Backup).");
+          console.log("Data laddad från LocalStorage (Backup).");
         }
       } catch (e) {
-        console.error("Fel vid laddning frÃ¥n LocalStorage:", e);
+        console.error("Fel vid laddning från LocalStorage:", e);
       }
     }
 
@@ -1376,7 +1376,7 @@ class KronanPanel extends LitElement {
     // Force UI update
     this.requestUpdate();
 
-    // KÃ¶r sparning asynkront
+    // Kör sparning asynkront
     setTimeout(async () => {
       try {
         this._cleanupOldData();
@@ -1653,8 +1653,8 @@ class KronanPanel extends LitElement {
   _deleteAllStrict(text, assignee) {
     if (!text) return;
     const confirmMsg = assignee
-      ? `Ã„r du sÃ¤ker pÃ¥ att du vill radera ALLA uppgifter med namnet "${text}" OCH personen "${assignee}" frÃ¥n hela veckovyn?`
-      : `Ã„r du sÃ¤ker pÃ¥ att du vill radera ALLA uppgifter med namnet "${text}" (oavsett person) frÃ¥n hela veckovyn?`;
+      ? `Är du säker på att du vill radera ALLA uppgifter med namnet "${text}" OCH personen "${assignee}" från hela veckovyn?`
+      : `Är du säker på att du vill radera ALLA uppgifter med namnet "${text}" (oavsett person) från hela veckovyn?`;
 
     if (confirm(confirmMsg)) {
       const newWeek = { ...this.week };
@@ -1682,9 +1682,9 @@ class KronanPanel extends LitElement {
   }
 
   _requestResetPayouts() {
-    this._showToast("Vill du nollstÃ¤lla all utbetalningshistorik? (Saldot pÃ¥verkas ej)", [
+    this._showToast("Vill du nollställa all utbetalningshistorik? (Saldot påverkas ej)", [
       { label: "Avbryt", onClick: () => { this.toast = { visible: false, message: '', actions: [], countdown: 0 }; this.requestUpdate(); } },
-      { label: "NollstÃ¤ll", critical: true, onClick: () => this._performResetPayouts() }
+      { label: "Nollställ", critical: true, onClick: () => this._performResetPayouts() }
     ]);
   }
 
@@ -1718,7 +1718,7 @@ class KronanPanel extends LitElement {
 
     // Show Undo Toast
     this._showToast("Historik nollstÃ¤lld (5s)", [
-      { label: "Ã…ngra", onClick: () => this._restorePayouts() }
+      { label: "Ångra", onClick: () => this._restorePayouts() }
     ], 5, () => {
       // On expire (commit) - clear snapshot
       this.undoSnapshot = null;
@@ -1801,7 +1801,7 @@ class KronanPanel extends LitElement {
 
     // Show Undo Toast
     this._showToast('Veckan raderad', [
-      { label: 'Ã…ngra', onClick: () => this._restoreWeek() }
+      { label: 'Ångra', onClick: () => this._restoreWeek() }
     ], 5);
   }
 
@@ -1811,7 +1811,7 @@ class KronanPanel extends LitElement {
       this._saveData();
       this.undoSnapshot = null;
       if (this.toastTimer) clearInterval(this.toastTimer);
-      this._showToast('Veckan Ã¥terstÃ¤lld!');
+      this._showToast('Veckan återställd!');
       setTimeout(() => this.toast = { visible: false }, 3000);
     }
   }
@@ -1842,14 +1842,14 @@ class KronanPanel extends LitElement {
             </div>
           </div>
           <div style="display:flex;gap:10px;">
-            <button @click="${() => this._toggleDarkMode()}" style="background:var(--bg-surface);border:1px solid var(--border-color);color:var(--text-secondary);padding:8px;border-radius:12px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="${this.isDarkMode ? 'Ljust lÃ¤ge' : 'MÃ¶rkt lÃ¤ge'}">
+            <button @click="${() => this._toggleDarkMode()}" style="background:var(--bg-surface);border:1px solid var(--border-color);color:var(--text-secondary);padding:8px;border-radius:12px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="${this.isDarkMode ? 'Ljust läge' : 'MÃ¶rkt läge'}">
               ${this.isDarkMode ? 'â˜€ï¸' : 'ðŸŒ™'}
             </button>
-            <button @click="${() => this._toggleFullscreen()}" style="background:var(--bg-surface);border:1px solid var(--border-color);color:var(--text-secondary);padding:8px;border-radius:12px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="${this.isFullscreen ? 'Avsluta helskÃ¤rm' : 'HelskÃ¤rm'}">
+            <button @click="${() => this._toggleFullscreen()}" style="background:var(--bg-surface);border:1px solid var(--border-color);color:var(--text-secondary);padding:8px;border-radius:12px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="${this.isFullscreen ? 'Avsluta helskärm' : 'Helskärm'}">
               ${this.isFullscreen ? 'â†™ï¸' : 'â›¶'}
             </button>
             <button style="background:#ef4444;color:#fff;padding:8px 18px;border-radius:12px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;" @click="${() => this._requestDeleteWeek()}">Radera vecka</button>
-            <button style="background:#10b981;color:#fff;padding:8px 18px;border-radius:12px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;" @click="${() => { this.showMoneyModal = true; this.moneyTab = 'users'; }}">InstÃ¤llningar</button>
+            <button style="background:#10b981;color:#fff;padding:8px 18px;border-radius:12px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;" @click="${() => { this.showMoneyModal = true; this.moneyTab = 'users'; }}">Inställningar</button>
           </div>
 
           ${this.showTemplateModal ? html`
@@ -1882,7 +1882,7 @@ class KronanPanel extends LitElement {
             <div style="position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">
               <div style="background:var(--bg-surface);border-radius:24px;box-shadow:0 8px 40px var(--shadow-color);padding:32px;min-width:340px;max-width:96vw;width:800px;max-height:90vh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-                  <h2 style="font-size:1.2rem;font-weight:bold;color:var(--text-primary);">InstÃ¤llningar</h2>
+                  <h2 style="font-size:1.2rem;font-weight:bold;color:var(--text-primary);">Inställningar</h2>
                   <button style="background:none;border:none;font-size:1.5rem;color:var(--text-secondary);cursor:pointer;" @click="${() => this.showMoneyModal = false}">âœ•</button>
                 </div>
                 <div style="display:flex;gap:4px;background:#f1f5f9;padding:4px;border-radius:12px;width:100%;overflow-x:auto;margin-bottom:18px;">
@@ -1902,7 +1902,7 @@ class KronanPanel extends LitElement {
                           <input name="allowance" type="number" placeholder="Fast veckopeng" style="width:110px;padding:8px 10px;border-radius:8px;border:1px solid #c7d2fe;font-size:1rem;" />
                         </div>
                         <div style="display:flex;align-items:center;gap:10px;background:#fff;padding:6px 10px;border-radius:8px;">
-                          <span style="font-size:0.8rem;font-weight:bold;color:#64748b;">VÃ¤lj fÃ¤rg:</span>
+                          <span style="font-size:0.8rem;font-weight:bold;color:#64748b;">Välj fÃ¤rg:</span>
                           <div style="display:flex;gap:6px;">
                             ${COLORS.map((col, idx) => html`
                               <button type="button" @click="${() => this._setNewUserColor(idx)}" style="width:24px;height:24px;border-radius:50%;border:2px solid ${this.newUserColor === idx ? '#6366f1' : '#e5e7eb'};background:${col.bg};cursor:pointer;"></button>
@@ -1910,7 +1910,7 @@ class KronanPanel extends LitElement {
                           </div>
                         </div>
                         <div style="display:flex;align-items:center;gap:10px;background:#fff;padding:6px 10px;border-radius:8px;">
-                          <span style="font-size:0.8rem;font-weight:bold;color:#64748b;">VÃ¤lj ikon:</span>
+                          <span style="font-size:0.8rem;font-weight:bold;color:#64748b;">Välj ikon:</span>
                           <div style="display:flex;gap:4px;overflow-x:auto;width:100%;padding-bottom:4px;">
                             ${ICONS.map(icon => html`
                               <button type="button" @click="${() => this.newUserIcon = icon}" style="flex-shrink:0;width:44px;height:44px;border-radius:8px;border:2px solid ${this.newUserIcon === icon ? '#6366f1' : '#e5e7eb'};background:#fff;font-size:1.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">${icon}</button>
@@ -1948,7 +1948,7 @@ class KronanPanel extends LitElement {
                           <input name="val" type="number" placeholder="Pris (kr)" style="width:90px;padding:8px 10px;border-radius:8px;border:1px solid #6ee7b7;font-size:1rem;" required />
                         </div>
                         <div style="display:flex;align-items:center;gap:10px;background:#fff;padding:6px 10px;border-radius:8px;">
-                          <span style="font-size:0.8rem;font-weight:bold;color:#64748b;">VÃ¤lj ikon:</span>
+                          <span style="font-size:0.8rem;font-weight:bold;color:#64748b;">Välj ikon:</span>
                           <div style="display:flex;gap:4px;overflow-x:auto;width:100%;padding-bottom:4px;">
                             ${ICONS.map(icon => html`
                               <button type="button" @click="${() => this.newTaskIcon = icon}" style="flex-shrink:0;width:44px;height:44px;border-radius:8px;border:2px solid ${this.newTaskIcon === icon ? '#10b981' : '#e5e7eb'};background:#fff;font-size:1.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">${icon}</button>
@@ -2020,15 +2020,15 @@ class KronanPanel extends LitElement {
                             </div>
                           `;
         })}
-                        ${this.payouts.length === 0 ? html`<div style="color:#94a3b8;font-size:0.9rem;">Inga utbetalningar registrerade Ã¤n.</div>` : ''}
+                        ${this.payouts.length === 0 ? html`<div style="color:#94a3b8;font-size:0.9rem;">Inga utbetalningar registrerade än.</div>` : ''}
                       </div>
 
                       <div style="margin-top:20px;padding-top:20px;border-top:1px solid #e5e7eb;">
                         <button @click="${() => this._requestResetPayouts()}" style="width:100%;color:#ef4444;background:none;border:1px solid #ef4444;padding:10px 0;border-radius:10px;font-weight:bold;cursor:pointer;">
-                          ðŸ—‘ï¸ NollstÃ¤ll all utbetalningshistorik
+                          🗑️ Nollställ all utbetalningshistorik
                         </button>
                         <div style="text-align:center;font-size:0.8rem;color:#94a3b8;margin-top:6px;">
-                          Detta nollar "Totalt utbetalat" men behÃ¥ller aktuellt saldo.
+                          Detta nollar "Totalt utbetalat" men behåller aktuellt saldo.
                         </div>
                       </div>
                     </div>
@@ -2038,7 +2038,7 @@ class KronanPanel extends LitElement {
                       <form @submit="${e => {
             e.preventDefault();
             if (this.selectedRecurringDays.length === 0) {
-              alert('VÃ¤lj minst en dag!');
+              alert('Välj minst en dag!');
               return;
             }
             const formData = new FormData(e.target);
@@ -2056,7 +2056,7 @@ class KronanPanel extends LitElement {
                         
                         <!-- Day Chips Selector -->
                         <div>
-                          <label style="font-size:0.8rem;font-weight:bold;color:#6b21a8;margin-bottom:4px;display:block;">VÃ¤lj dagar:</label>
+                          <label style="font-size:0.8rem;font-weight:bold;color:#6b21a8;margin-bottom:4px;display:block;">Välj dagar:</label>
                           <div style="display:flex;flex-wrap:wrap;gap:6px;">
                             ${[...DAYS, 'market'].map(d => {
             const isSelected = this.selectedRecurringDays.includes(d);
@@ -2103,7 +2103,7 @@ class KronanPanel extends LitElement {
               form.querySelector('[name=icon]').value = t.icon || '';
             }
           }}">
-                          <option value="">-- HÃ¤mta info frÃ¥n biblioteket (fyller i nedan) --</option>
+                          <option value="">-- Hämta info från biblioteket (fyller i nedan) --</option>
                           ${this.taskLibrary.map(t => html`<option value="${t.id}">${t.icon} ${t.text} (${t.value} kr)</option>`)}
                         </select>
 
@@ -2286,7 +2286,7 @@ class KronanPanel extends LitElement {
                 </div>
 
                 <div style="margin-bottom:18px;">
-                  <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Vem ska gÃ¶ra detta?</label><br>
+                  <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Vem ska göra detta?</label><br>
                   <select style="width:100%;font-size:1.1rem;padding:8px 12px;border-radius:8px;border:1px solid #ddd;margin-top:4px;"
                     .value="${this.editingTask.assignee || ''}" 
                     @change="${e => this.editingTask = { ...this.editingTask, assignee: e.target.value }}">
@@ -2327,7 +2327,7 @@ class KronanPanel extends LitElement {
 
                 ${this.selectedDay !== 'market' ? html`
                   <div style="margin-bottom:18px;">
-                    <label style="font-size:0.9rem;font-weight:600;color:#64748b;">VÃ¤lj dagar</label><br>
+                    <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Välj dagar</label><br>
                     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
                       ${DAYS.map(d => {
         const isSelected = this.selectedRecurringDays.includes(d);
@@ -2355,10 +2355,10 @@ class KronanPanel extends LitElement {
                 ` : ''}
                 
                 <div style="margin-bottom:18px;">
-                  <label style="font-size:0.9rem;font-weight:600;color:#64748b;">VÃ¤lj frÃ¥n lista</label><br>
+                  <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Välj från lista</label><br>
                   <select style="width:100%;font-size:1.1rem;padding:8px 12px;border-radius:8px;border:1px solid #ddd;margin-top:4px;"
                     @change="${e => this.selectedTaskFromLibrary = this.taskLibrary.find(t => t.id === e.target.value)}">
-                    <option value="">-- VÃ¤lj en uppgift --</option>
+                    <option value="">-- Välj en uppgift --</option>
                     ${this.taskLibrary.map(t => html`
                       <option value="${t.id}">${t.icon ? t.icon + ' ' : ''}${t.text} (${t.value} kr)</option>
                     `)}
@@ -2374,10 +2374,10 @@ class KronanPanel extends LitElement {
                   </div>
                   
                   <div style="margin-bottom:18px;">
-                    <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Vem ska gÃ¶ra detta?</label><br>
+                    <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Vem ska göra detta?</label><br>
                     <select style="width:100%;font-size:1.1rem;padding:8px 12px;border-radius:8px;border:1px solid #ddd;margin-top:4px;"
                       @change="${e => this.selectedAssignee = e.target.value}">
-                      <option value="">-- VÃ¤lj person --</option>
+                      <option value="">-- Välj person --</option>
                       ${this.users.map(u => html`
                         <option value="${u.name}">${u.name}</option>
                       `)}
@@ -2420,7 +2420,7 @@ class KronanPanel extends LitElement {
                     <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
                       <span>ðŸ“‹ Kopiera</span>
                     </div>
-                    <div style="font-size:0.8rem;font-weight:normal;opacity:0.9;">(Uppgiften finns kvar pÃ¥ ${this.moveCopyData.sourceDay})</div>
+                    <div style="font-size:0.8rem;font-weight:normal;opacity:0.9;">(Uppgiften finns kvar på ${this.moveCopyData.sourceDay})</div>
                   </button>
                   
                   <button style="background:#6366f1;color:#fff;padding:14px 0;border:none;border-radius:12px;font-weight:bold;font-size:1.1rem;cursor:pointer;"
@@ -2428,7 +2428,7 @@ class KronanPanel extends LitElement {
                     <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
                       <span>âž¡ï¸ Flytta</span>
                     </div>
-                    <div style="font-size:0.8rem;font-weight:normal;opacity:0.9;">(Uppgiften flyttas frÃ¥n ${this.moveCopyData.sourceDay})</div>
+                    <div style="font-size:0.8rem;font-weight:normal;opacity:0.9;">(Uppgiften flyttas från ${this.moveCopyData.sourceDay})</div>
                   </button>
                   
                   <button style="background:#e5e7eb;color:#334155;padding:14px 0;border:none;border-radius:12px;font-weight:bold;font-size:1.1rem;cursor:pointer;"
