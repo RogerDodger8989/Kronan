@@ -1849,7 +1849,7 @@ class KronanPanel extends LitElement {
         : ''}
                 </h1>
                 <p style="margin:0;color:var(--text-secondary);font-size:0.95rem;font-weight:500;">
-                  ${getWeekRange(this.currentDate)}
+                  ${getWeekRange(this.currentDate)} <span style="font-size:0.7rem;opacity:0.5;">(${this.currentDate.toISOString().slice(0, 10)} | ID: ${getWeekIdentifier(this.currentDate)})</span>
                 </p>
               </div>
 
