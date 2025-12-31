@@ -612,7 +612,44 @@ class KronanPanel extends LitElement {
   _deleteUser(id) {
     const user = this.users.find(u => u.id === id);
     if (user) {
-      if (confirm(`Är du säker på att du vill ta bort ${user.name}? ALL historik och data raderas permanent. Detta går inte att ångra.`)) {
+      if (confirm(`Är du säker på att du vill ta bort ${user.name}? All data raderas.`)) {
+
+        // --- BACKUP FOR UNDO ---
+        const backup = {
+          user: { ...user },
+          payouts: this.payouts.filter(p => p.userId === id),
+          currentTasks: [],
+          historyTasks: []
+        };
+
+        // Backup Current Week Tasks
+        Object.keys(this.week).forEach(day => {
+          if (Array.isArray(this.week[day])) {
+            this.week[day].forEach(t => {
+              if (t.assignee === user.name) {
+                backup.currentTasks.push({ day, task: { ...t } });
+              }
+            });
+          }
+        });
+
+        // Backup History Tasks
+        if (this.weeksData) {
+          Object.entries(this.weeksData).forEach(([weekId, data]) => {
+            if (data.week) {
+              Object.entries(data.week).forEach(([day, list]) => {
+                if (Array.isArray(list)) {
+                  list.forEach(t => {
+                    if (t.assignee === user.name) {
+                      backup.historyTasks.push({ weekId, day, task: { ...t } });
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+        // -----------------------
 
         // 1. HARD DELETE: Remove tasks from Current Week
         Object.keys(this.week).forEach(key => {
@@ -627,7 +664,6 @@ class KronanPanel extends LitElement {
             if (data.week) {
               Object.values(data.week).forEach(list => {
                 if (Array.isArray(list)) {
-                  // Mutate array backwards to remove items
                   for (let i = list.length - 1; i >= 0; i--) {
                     if (list[i].assignee === user.name) {
                       list.splice(i, 1);
@@ -647,14 +683,41 @@ class KronanPanel extends LitElement {
         // 4. Remove User
         this.users = this.users.filter(u => u.id !== id);
 
-        // Run cleanup (just in case, though we just nuked everything)
-        // this._cleanupOrphans(); // Not strictly needed for this user anymore
-
         this._saveData();
+
+        // NOTIFICATION WITH UNDO
+        this._showToast(`${user.name} raderad.`, 5000, [{
+          label: 'Ångra',
+          onClick: () => this._restoreDeletedUser(backup)
+        }]);
       }
     }
   }
 
+  _restoreDeletedUser(backup) {
+    // 1. Restore User
+    this.users = [...this.users, backup.user];
+
+    // 2. Restore Payouts
+    this.payouts = [...this.payouts, ...backup.payouts];
+
+    // 3. Restore Current Tasks
+    backup.currentTasks.forEach(item => {
+      if (this.week[item.day]) {
+        this.week[item.day].push(item.task);
+      }
+    });
+
+    // 4. Restore History Tasks
+    backup.historyTasks.forEach(item => {
+      if (this.weeksData[item.weekId] && this.weeksData[item.weekId].week && this.weeksData[item.weekId].week[item.day]) {
+        this.weeksData[item.weekId].week[item.day].push(item.task);
+      }
+    });
+
+    this._saveData();
+    this._showToast(`${backup.user.name} återställd.`, 3000);
+  }
   _setNewUserColor(idx) {
     this.newUserColor = idx;
   }
