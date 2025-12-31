@@ -605,39 +605,43 @@ class KronanPanel extends LitElement {
   _deleteUser(id) {
     const user = this.users.find(u => u.id === id);
     if (user) {
-      if (confirm(`Är du säker på att du vill ta bort ${user.name}? All historik kommer att anonymiseras.`)) {
-        // Anonymize historical tasks to prevent name collision if user is recreated
-        const anonymizedName = `${user.name} (Raderad)`;
+      if (confirm(`Är du säker på att du vill ta bort ${user.name}? ALL historik och data raderas permanent. Detta går inte att ångra.`)) {
 
-        // 1. Current Week
+        // 1. HARD DELETE: Remove tasks from Current Week
         Object.keys(this.week).forEach(key => {
           if (Array.isArray(this.week[key])) {
-            this.week[key].forEach(t => {
-              if (t.assignee === user.name) t.assignee = anonymizedName;
-            });
+            this.week[key] = this.week[key].filter(t => t.assignee !== user.name);
           }
         });
 
-        // 2. Historical Weeks
+        // 2. HARD DELETE: Remove tasks from History
         if (this.weeksData) {
           Object.values(this.weeksData).forEach(data => {
             if (data.week) {
               Object.values(data.week).forEach(list => {
                 if (Array.isArray(list)) {
-                  list.forEach(t => {
-                    if (t.assignee === user.name) t.assignee = anonymizedName;
-                  });
+                  // Mutate array backwards to remove items
+                  for (let i = list.length - 1; i >= 0; i--) {
+                    if (list[i].assignee === user.name) {
+                      list.splice(i, 1);
+                    }
+                  }
                 }
               });
             }
           });
         }
 
-        // 3. Remove User
+        // 3. HARD DELETE: Remove Payouts
+        if (this.payouts) {
+          this.payouts = this.payouts.filter(p => p.userId !== id);
+        }
+
+        // 4. Remove User
         this.users = this.users.filter(u => u.id !== id);
 
-        // Run cleanup to catch any missed items or sync issues
-        this._cleanupOrphans();
+        // Run cleanup (just in case, though we just nuked everything)
+        // this._cleanupOrphans(); // Not strictly needed for this user anymore
 
         this._saveData();
       }
