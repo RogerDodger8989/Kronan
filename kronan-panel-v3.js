@@ -373,6 +373,7 @@ class KronanPanel extends LitElement {
     payoutUser: { type: Object },
     recurringRules: { type: Array },
     selectedRecurringDays: { type: Array },
+    // Toast State
     toast: { type: Object }, // { visible, message, actions: [{label, onClick}], countdown }
     undoSnapshot: { type: Object }
   };
