@@ -280,8 +280,8 @@ class KronanPanel extends LitElement {
       background: #64748b;
     }
     @keyframes slideUp {
-      from { transform: translate(-50%, 20px); opacity: 0; }
-      to { transform: translate(-50%, 0); opacity: 1; }
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
     /* Mobile Responsive Adjustments */
@@ -299,6 +299,9 @@ class KronanPanel extends LitElement {
         border-radius: 24px;
         flex-direction: row; /* Keep row but maybe smaller */
         flex-wrap: wrap; /* Allow wrapping */
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
       }
       
       .header-titles h1 {
@@ -441,6 +444,78 @@ class KronanPanel extends LitElement {
     this.toast = { visible: false, message: '', actions: [] };
     this.undoSnapshot = null;
     this.toastTimer = null;
+  }
+
+  _calculateBalance(userId) {
+    try {
+      // 1. Starta med Arkiverat Saldo
+      const user = this.users.find(u => u.id === userId);
+      let totalEarned = user && user.archivedBalance ? Number(user.archivedBalance) : 0;
+
+      // 2. Summera intäkter från KVARVARANDE historik
+      if (this.weeksData) {
+        Object.entries(this.weeksData).forEach(([weekId, weekObj]) => {
+          const tasks = weekObj.week;
+          const completed = weekObj.completedTasks || {};
+
+          if (user) {
+            let shouldAddAllowance = true;
+            if (user.createdAt) {
+              const weekDate = this._getDateFromWeekId(weekId);
+              const currentWeekId = getWeekIdentifier(new Date());
+
+              if (weekId === currentWeekId) {
+                shouldAddAllowance = true; // Force allow for current week
+              } else if (!weekDate || (weekDate < user.createdAt - 604800000)) {
+                shouldAddAllowance = false;
+              }
+              // STRICT NO FUTURE:
+              if (weekDate > Date.now()) {
+                shouldAddAllowance = false;
+              }
+            }
+
+            if (weekObj.week.allowanceDisabled) {
+              shouldAddAllowance = false;
+            }
+
+            if (shouldAddAllowance) {
+              totalEarned += user.fixedAllowance;
+            }
+          }
+
+          if (tasks) {
+            Object.entries(tasks).forEach(([day, taskList]) => {
+              taskList.forEach(task => {
+                const taskKey = `${day}-${task.id}`;
+                if (completed[taskKey] && task.assignee) {
+                  // Optimization: assume task has assignee property matching keys
+                  // But double check against user name
+                  if (task.assignee === user.name) {
+                    totalEarned += Number(task.value || 0);
+                  }
+                }
+              });
+            });
+          }
+        });
+      }
+
+      // 3. Summera KVARVARANDE utbetalningar
+      let totalPaid = 0;
+      if (this.payouts) {
+        this.payouts.forEach(p => {
+          if (p.userId === userId) {
+            totalPaid += Number(p.amount || 0);
+          }
+        });
+      }
+
+      return { earned: totalEarned, paid: totalPaid, balance: totalEarned - totalPaid };
+    } catch (e) {
+      console.error("Error calculating balance for", userId, e);
+      return { earned: 0, paid: 0, balance: 0 };
+    }
   }
 
   firstUpdated() {
