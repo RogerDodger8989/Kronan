@@ -419,7 +419,7 @@ class KronanPanel extends LitElement {
     this.moneyTab = 'users';
     this.newUserColor = 0;
     this.taskLibrary = [
-      { id: 't1', text: 'TÃ¶mma diskmaskin', value: 5, colorIndex: 0 },
+      { id: 't1', text: 'Tömma diskmaskin', value: 5, colorIndex: 0 },
       { id: 't2', text: 'Duka bordet', value: 3, colorIndex: 1 },
     ];
     this.showTemplateModal = false;
@@ -446,9 +446,8 @@ class KronanPanel extends LitElement {
     this.toastTimer = null;
   }
 
-
   firstUpdated() {
-    // Skapa dold filinput fÃ¶r import
+    // Skapa dold filinput för import
     this.fileInput = document.createElement('input');
     this.fileInput.type = 'file';
     this.fileInput.accept = '.json,application/json';
@@ -488,7 +487,7 @@ class KronanPanel extends LitElement {
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target.result);
-        if (window.confirm('Detta skriver Ã¶ver all nuvarande data. FortsÃ¤tt?')) {
+        if (window.confirm('Detta skriver över all nuvarande data. Fortsätt?')) {
           if (parsed.week) this.week = parsed.week;
           if (parsed.users) this.users = parsed.users;
           if (parsed.taskLibrary) this.taskLibrary = parsed.taskLibrary;
@@ -496,7 +495,7 @@ class KronanPanel extends LitElement {
           if (parsed.completedTasks) this.completedTasks = parsed.completedTasks;
           this._saveData(); // Spara direkt efter import
         }
-      } catch (err) { window.alert('Fel vid inlÃ¤sning.'); }
+      } catch (err) { window.alert('Fel vid inläsning.'); }
     };
     reader.readAsText(file);
     e.target.value = null;
@@ -513,7 +512,7 @@ class KronanPanel extends LitElement {
     const { item, sourceDay } = this.draggedItem;
     if (sourceDay === targetDay) { this.draggedItem = null; return; }
 
-    // Spara data fÃ¶r modalen
+    // Spara data för modalen
     this.moveCopyData = { item, sourceDay, targetDay };
     this.showMoveCopyModal = true;
   }
@@ -863,7 +862,7 @@ class KronanPanel extends LitElement {
     if (!this.moveCopyData) return;
     const { item, sourceDay, targetDay } = this.moveCopyData;
 
-    // Ta bort från kÃ¤llan och lÃ¤gg till i mÃ¥let (flytta)
+    // Ta bort från källan och lägg till i målet (flytta)
     const newSource = this.week[sourceDay].filter(i => i.id !== item.id);
     const newTarget = [...this.week[targetDay], item];
     this.week = { ...this.week, [sourceDay]: newSource, [targetDay]: newTarget };
@@ -929,12 +928,12 @@ class KronanPanel extends LitElement {
             }
           });
 
-          // LÃ¤gg till i arkivet
+          // Lägg till i arkivet
           user.archivedBalance = (user.archivedBalance || 0) + weekEarnings;
         });
       });
 
-      // Spara bara de veckor vi ska behÃ¥lla
+      // Spara bara de veckor vi ska behålla
       const prunedData = {};
       weeksToKeep.forEach(id => {
         prunedData[id] = this.weeksData[id];
@@ -942,7 +941,7 @@ class KronanPanel extends LitElement {
       this.weeksData = prunedData;
     }
 
-    // 2. Hantera Utbetalningar (BehÃ¥ll 50 senaste)
+    // 2. Hantera Utbetalningar (Behåll 50 senaste)
     if (this.payouts && this.payouts.length > 50) {
       const keptPayouts = this.payouts.slice(-50);
       const removedPayouts = this.payouts.slice(0, this.payouts.length - 50);
@@ -950,7 +949,7 @@ class KronanPanel extends LitElement {
       removedPayouts.forEach(p => {
         const user = this.users.find(u => u.id === p.userId);
         if (user) {
-          // Dra av utbetalningen från arkivet (eftersom vi tar bort "minusposten" från listan, mÃ¥ste vi minska "nettot")
+          // Dra av utbetalningen från arkivet (eftersom vi tar bort "minusposten" från listan, måste vi minska "nettot")
           // Total = (ArkivEarned - ArkivPaid) + (CurrEarned - CurrPaid)
           // Om p flyttas från CurrPaid till ArkivPaid:
           // ArkivNet -= p
@@ -976,7 +975,7 @@ class KronanPanel extends LitElement {
     Object.entries(this.week).forEach(([day, tasks]) => {
       tasks.forEach(item => {
         const taskKey = `${day}-${item.id}`;
-        // Om uppgiften ÄR avklarad (Ã¶verstruken), rÃ¤kna med den
+        // Om uppgiften ÄR avklarad (överstruken), räkna med den
         if (this.completedTasks[taskKey] && item.assignee && totals[item.assignee]) {
           totals[item.assignee].tasks += Number(item.value || 0);
           totals[item.assignee].total += Number(item.value || 0);
@@ -1184,7 +1183,7 @@ class KronanPanel extends LitElement {
       if (requestFullScreen) {
         requestFullScreen.call(docEl).catch(err => {
           console.error(`Error attempting to enable fullscreen: ${err.message}`);
-          window.alert(`Kunde inte starta helskärm: ${err.message}\n(Om du kÃ¶r via Home Assistant kan detta vara begränsat av webbläsaren/appen)`);
+          window.alert(`Kunde inte starta helskärm: ${err.message}\n(Om du kör via Home Assistant kan detta vara begränsat av webbläsaren/appen)`);
         });
       } else {
         window.alert("Helskärm stöds inte av din webbläsare.");
@@ -1502,7 +1501,7 @@ class KronanPanel extends LitElement {
         const iconChanged = libraryMatch.icon !== this.editData.icon;
 
         if (nameChanged || priceChanged || iconChanged) {
-          if (window.confirm(`Vill du Ã¤ven uppdatera den sparade uppgiften i biblioteket ("${libraryMatch.text}") med dessa Ã¤ndringar?`)) {
+          if (window.confirm(`Vill du även uppdatera den sparade uppgiften i biblioteket ("${libraryMatch.text}") med dessa ändringar?`)) {
             this.taskLibrary = this.taskLibrary.map(t => {
               if (t.id === libraryMatch.id) {
                 return { ...t, text: this.editData.text, value: Number(this.editData.value) || 0, icon: this.editData.icon };
@@ -1717,7 +1716,7 @@ class KronanPanel extends LitElement {
     this._saveData();
 
     // Show Undo Toast
-    this._showToast("Historik nollstÃ¤lld (5s)", [
+    this._showToast("Historik nollställd (5s)", [
       { label: "Ångra", onClick: () => this._restorePayouts() }
     ], 5, () => {
       // On expire (commit) - clear snapshot
@@ -1824,7 +1823,7 @@ class KronanPanel extends LitElement {
           <div class="crown">${this._crownIcon()}</div>
           <div class="header-titles">
             <div style="display:flex;align-items:center;gap:12px;">
-              <button @click="${() => this._prevWeek()}" style="background:none;border:none;cursor:pointer;font-size:1.5rem;color:var(--text-secondary);padding:4px 8px;border-radius:8px;" class="nav-btn">â—€</button>
+              <button @click="${() => this._prevWeek()}" style="background:none;border:none;cursor:pointer;font-size:1.5rem;color:var(--text-secondary);padding:4px 8px;border-radius:8px;" class="nav-btn">◀</button>
               
               <div style="display:flex;flex-direction:column;gap:2px;">
                 <h1 style="margin:0;font-size:1.8rem;color:var(--text-primary);display:flex;align-items:center;gap:10px;">
@@ -1838,15 +1837,15 @@ class KronanPanel extends LitElement {
                 </p>
               </div>
 
-              <button @click="${() => this._nextWeek()}" style="background:none;border:none;cursor:pointer;font-size:1.5rem;color:var(--text-secondary);padding:4px 8px;border-radius:8px;" class="nav-btn">â–¶</button>
+              <button @click="${() => this._nextWeek()}" style="background:none;border:none;cursor:pointer;font-size:1.5rem;color:var(--text-secondary);padding:4px 8px;border-radius:8px;" class="nav-btn">▶</button>
             </div>
           </div>
           <div style="display:flex;gap:10px;">
-            <button @click="${() => this._toggleDarkMode()}" style="background:var(--bg-surface);border:1px solid var(--border-color);color:var(--text-secondary);padding:8px;border-radius:12px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="${this.isDarkMode ? 'Ljust läge' : 'MÃ¶rkt läge'}">
-              ${this.isDarkMode ? 'â˜€ï¸' : 'ðŸŒ™'}
+            <button @click="${() => this._toggleDarkMode()}" style="background:var(--bg-surface);border:1px solid var(--border-color);color:var(--text-secondary);padding:8px;border-radius:12px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="${this.isDarkMode ? 'Ljust läge' : 'Mörkt läge'}">
+              ${this.isDarkMode ? '☀️' : '🌙'}
             </button>
             <button @click="${() => this._toggleFullscreen()}" style="background:var(--bg-surface);border:1px solid var(--border-color);color:var(--text-secondary);padding:8px;border-radius:12px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="${this.isFullscreen ? 'Avsluta helskärm' : 'Helskärm'}">
-              ${this.isFullscreen ? 'â†™ï¸' : 'â›¶'}
+              ${this.isFullscreen ? '↙️' : '⛶'}
             </button>
             <button style="background:#ef4444;color:#fff;padding:8px 18px;border-radius:12px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;" @click="${() => this._requestDeleteWeek()}">Radera vecka</button>
             <button style="background:#10b981;color:#fff;padding:8px 18px;border-radius:12px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;" @click="${() => { this.showMoneyModal = true; this.moneyTab = 'users'; }}">Inställningar</button>
@@ -1857,17 +1856,17 @@ class KronanPanel extends LitElement {
               <div style="background:var(--bg-surface);border-radius:24px;box-shadow:0 8px 40px var(--shadow-color);padding:32px;min-width:320px;max-width:96vw;width:400px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
                   <h2 style="font-size:1.2rem;font-weight:bold;color:#f59e0b;">Veckomallar</h2>
-                  <button style="background:none;border:none;font-size:1.5rem;color:var(--text-secondary);cursor:pointer;" @click="${() => this.showTemplateModal = false}">âœ•</button>
+                  <button style="background:none;border:none;font-size:1.5rem;color:var(--text-secondary);cursor:pointer;" @click="${() => this.showTemplateModal = false}">✕</button>
                 </div>
                 <button @click="${() => { const name = window.prompt('Vad ska mallen heta?'); if (name) this._saveTemplate(name); }}" style="width:100%;padding:12px 0;border:2px dashed #f59e0b;border-radius:12px;color:#f59e0b;font-weight:bold;font-size:1rem;background:#fff;cursor:pointer;margin-bottom:18px;">+ Spara denna vecka som mall</button>
                 <div style="overflow-y:auto;max-height:300px;">
-                  ${this.templates.length === 0 ? html`<span style="color:#64748b;font-size:0.95rem;">Inga mallar sparade Ã¤n.</span>` : ''}
+                  ${this.templates.length === 0 ? html`<span style="color:#64748b;font-size:0.95rem;">Inga mallar sparade än.</span>` : ''}
                   ${this.templates.map(t => html`
                     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;background:#fff;border-radius:8px;margin-bottom:6px;">
                       <span style="font-weight:bold;color:#334155;">${t.name}</span>
                       <div style="display:flex;gap:6px;">
                         <button @click="${() => this._loadTemplate(t)}" style="background:#6366f1;color:#fff;padding:4px 10px;border-radius:8px;border:none;font-size:0.9rem;cursor:pointer;">Ladda</button>
-                        <button @click="${() => this._deleteTemplate(t.id)}" style="background:#ef4444;color:#fff;padding:4px 10px;border-radius:8px;border:none;font-size:0.9rem;cursor:pointer;">âœ•</button>
+                        <button @click="${() => this._deleteTemplate(t.id)}" style="background:#ef4444;color:#fff;padding:4px 10px;border-radius:8px;border:none;font-size:0.9rem;cursor:pointer;">✕</button>
                       </div>
                     </div>
                   `)}
@@ -1883,26 +1882,26 @@ class KronanPanel extends LitElement {
               <div style="background:var(--bg-surface);border-radius:24px;box-shadow:0 8px 40px var(--shadow-color);padding:32px;min-width:340px;max-width:96vw;width:800px;max-height:90vh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
                   <h2 style="font-size:1.2rem;font-weight:bold;color:var(--text-primary);">Inställningar</h2>
-                  <button style="background:none;border:none;font-size:1.5rem;color:var(--text-secondary);cursor:pointer;" @click="${() => this.showMoneyModal = false}">âœ•</button>
+                  <button style="background:none;border:none;font-size:1.5rem;color:var(--text-secondary);cursor:pointer;" @click="${() => this.showMoneyModal = false}">✕</button>
                 </div>
                 <div style="display:flex;gap:4px;background:#f1f5f9;padding:4px;border-radius:12px;width:100%;overflow-x:auto;margin-bottom:18px;">
                   <button @click="${() => this.moneyTab = 'users'}" style="flex:1;padding:6px 12px;white-space:nowrap;border-radius:8px;border:none;font-weight:bold;font-size:0.9rem;cursor:pointer;${this.moneyTab === 'users' ? 'background:#fff;color:#6366f1;box-shadow:0 2px 4px #6366f133;' : 'background:none;color:#64748b;'}">Personer</button>
                   <button @click="${() => this.moneyTab = 'tasks'}" style="flex:1;padding:6px 12px;white-space:nowrap;border-radius:8px;border:none;font-weight:bold;font-size:0.9rem;cursor:pointer;${this.moneyTab === 'tasks' ? 'background:#fff;color:#10b981;box-shadow:0 2px 4px #10b98133;' : 'background:none;color:#64748b;'}">Bibliotek</button>
                   <button @click="${() => this.moneyTab = 'payouts'}" style="flex:1;padding:6px 12px;white-space:nowrap;border-radius:8px;border:none;font-weight:bold;font-size:0.9rem;cursor:pointer;${this.moneyTab === 'payouts' ? 'background:#fff;color:#ef4444;box-shadow:0 2px 4px #ef444433;' : 'background:none;color:#64748b;'}">Utbetalning</button>
-                  <button @click="${() => this.moneyTab = 'recurring'}" style="flex:1;padding:6px 12px;white-space:nowrap;border-radius:8px;border:none;font-weight:bold;font-size:0.9rem;cursor:pointer;${this.moneyTab === 'recurring' ? 'background:#fff;color:#8b5cf6;box-shadow:0 2px 4px #8b5cf633;' : 'background:none;color:#64748b;'}">Ã…terkommande</button>
+                  <button @click="${() => this.moneyTab = 'recurring'}" style="flex:1;padding:6px 12px;white-space:nowrap;border-radius:8px;border:none;font-weight:bold;font-size:0.9rem;cursor:pointer;${this.moneyTab === 'recurring' ? 'background:#fff;color:#8b5cf6;box-shadow:0 2px 4px #8b5cf633;' : 'background:none;color:#64748b;'}">Återkommande</button>
                   <button @click="${() => this.moneyTab = 'data'}" style="flex:1;padding:6px 12px;white-space:nowrap;border-radius:8px;border:none;font-weight:bold;font-size:0.9rem;cursor:pointer;${this.moneyTab === 'data' ? 'background:#fff;color:#f59e0b;box-shadow:0 2px 4px #f59e0b33;' : 'background:none;color:#64748b;'}">Data</button>
                 </div>
                 <div style="flex:1;overflow-y:auto;">
                   ${this.moneyTab === 'users' ? html`
                     <div style="background:#eef2ff;padding:18px;border-radius:14px;margin-bottom:18px;">
-                      <h4 style="font-weight:bold;color:#3730a3;font-size:1rem;margin-bottom:10px;">LÃ¤gg till person</h4>
+                      <h4 style="font-weight:bold;color:#3730a3;font-size:1rem;margin-bottom:10px;">Lägg till person</h4>
                       <form @submit="${e => { e.preventDefault(); this._addUser(e.target.name.value, e.target.allowance.value); e.target.reset(); }}" style="display:flex;flex-direction:column;gap:10px;">
                         <div style="display:flex;gap:10px;">
                           <input name="name" placeholder="Namn (t.ex. Isak)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #c7d2fe;font-size:1rem;" required />
                           <input name="allowance" type="number" placeholder="Fast veckopeng" style="width:110px;padding:8px 10px;border-radius:8px;border:1px solid #c7d2fe;font-size:1rem;" />
                         </div>
                         <div style="display:flex;align-items:center;gap:10px;background:#fff;padding:6px 10px;border-radius:8px;">
-                          <span style="font-size:0.8rem;font-weight:bold;color:#64748b;">Välj fÃ¤rg:</span>
+                          <span style="font-size:0.8rem;font-weight:bold;color:#64748b;">Välj färg:</span>
                           <div style="display:flex;gap:6px;">
                             ${COLORS.map((col, idx) => html`
                               <button type="button" @click="${() => this._setNewUserColor(idx)}" style="width:24px;height:24px;border-radius:50%;border:2px solid ${this.newUserColor === idx ? '#6366f1' : '#e5e7eb'};background:${col.bg};cursor:pointer;"></button>
@@ -1917,7 +1916,7 @@ class KronanPanel extends LitElement {
                             `)}
                           </div>
                         </div>
-                        <button type="submit" style="background:#6366f1;color:#fff;padding:10px 0;border-radius:8px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;">LÃ¤gg till Person</button>
+                        <button type="submit" style="background:#6366f1;color:#fff;padding:10px 0;border-radius:8px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;">Lägg till Person</button>
                       </form>
                     </div>
                     <div style="margin-bottom:10px;">
@@ -1933,18 +1932,18 @@ class KronanPanel extends LitElement {
                             </div>
                           </div>
                           <div style="display:flex;gap:4px;">
-                            <button @click="${() => this._startEditUser(u)}" style="background:none;border:none;color:#6366f1;font-size:1.2rem;cursor:pointer;">âœï¸</button>
-                            <button @click="${() => this._deleteUser(u.id)}" style="background:none;border:none;color:#ef4444;font-size:1.2rem;cursor:pointer;">âœ•</button>
+                            <button @click="${() => this._startEditUser(u)}" style="background:none;border:none;color:#6366f1;font-size:1.2rem;cursor:pointer;">✏️</button>
+                            <button @click="${() => this._deleteUser(u.id)}" style="background:none;border:none;color:#ef4444;font-size:1.2rem;cursor:pointer;">✕</button>
                           </div>
                         </div>
                       `)}
                     </div>
                   ` : this.moneyTab === 'tasks' ? html`
                     <div style="background:#d1fae5;padding:18px;border-radius:14px;margin-bottom:18px;">
-                      <h4 style="font-weight:bold;color:#047857;font-size:1rem;margin-bottom:10px;">LÃ¤gg till i biblioteket</h4>
+                      <h4 style="font-weight:bold;color:#047857;font-size:1rem;margin-bottom:10px;">Lägg till i biblioteket</h4>
                       <form @submit="${e => { e.preventDefault(); this._addTaskToLibrary(e.target.desc.value, e.target.val.value); e.target.reset(); }}" style="display:flex;flex-direction:column;gap:10px;">
                         <div style="display:flex;gap:10px;">
-                          <input name="desc" placeholder="Uppgift (t.ex. TÃ¶mma diskmaskin)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #6ee7b7;font-size:1rem;" required />
+                          <input name="desc" placeholder="Uppgift (t.ex. Tömma diskmaskin)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #6ee7b7;font-size:1rem;" required />
                           <input name="val" type="number" placeholder="Pris (kr)" style="width:90px;padding:8px 10px;border-radius:8px;border:1px solid #6ee7b7;font-size:1rem;" required />
                         </div>
                         <div style="display:flex;align-items:center;gap:10px;background:#fff;padding:6px 10px;border-radius:8px;">
@@ -1955,12 +1954,12 @@ class KronanPanel extends LitElement {
                             `)}
                           </div>
                         </div>
-                        <button type="submit" style="background:#10b981;color:#fff;padding:10px 0;border-radius:8px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;">LÃ¤gg till Uppgift</button>
+                        <button type="submit" style="background:#10b981;color:#fff;padding:10px 0;border-radius:8px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;">Lägg till Uppgift</button>
                       </form>
                     </div>
                     <div style="margin-bottom:10px;">
                       <h4 style="font-size:0.9rem;font-weight:bold;color:#64748b;margin-bottom:6px;">Sparade uppgifter</h4>
-                      ${this.taskLibrary.length === 0 ? html`<span style="color:#64748b;font-size:0.95rem;">Inga uppgifter i biblioteket Ã¤n.</span>` : ''}
+                      ${this.taskLibrary.length === 0 ? html`<span style="color:#64748b;font-size:0.95rem;">Inga uppgifter i biblioteket än.</span>` : ''}
                       ${this.taskLibrary.map(t => html`
                         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 8px 0;background:#fff;border-radius:8px;margin-bottom:6px;">
                           <div style="display:flex;align-items:center;gap:10px;">
@@ -1968,8 +1967,8 @@ class KronanPanel extends LitElement {
                             <span style="font-weight:500;color:#334155;">${t.icon || ''} ${t.text}</span>
                           </div>
                           <div style="display:flex;gap:4px;">
-                            <button @click="${() => this._startEditTask(t)}" style="background:none;border:none;color:#10b981;font-size:1.2rem;cursor:pointer;">âœï¸</button>
-                            <button @click="${() => this._deleteTaskFromLibrary(t.id)}" style="background:none;border:none;color:#ef4444;font-size:1.2rem;cursor:pointer;">âœ•</button>
+                            <button @click="${() => this._startEditTask(t)}" style="background:none;border:none;color:#10b981;font-size:1.2rem;cursor:pointer;">✏️</button>
+                            <button @click="${() => this._deleteTaskFromLibrary(t.id)}" style="background:none;border:none;color:#ef4444;font-size:1.2rem;cursor:pointer;">✕</button>
                           </div>
                         </div>
                       `)}
@@ -1983,7 +1982,7 @@ class KronanPanel extends LitElement {
                           <div style="background:#fff;padding:16px;border-radius:14px;border:1px solid #e5e7eb;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                               <div style="display:flex;align-items:center;gap:10px;">
-                                <span style="font-size:1.5rem;">${u.icon || 'ðŸ‘¤'}</span>
+                                <span style="font-size:1.5rem;">${u.icon || '👤'}</span>
                                 <div>
                                   <div style="font-weight:bold;font-size:1.1rem;color:#1e293b;">${u.name}</div>
                                   <div style="font-size:0.85rem;color:#64748b;">Saldo: <span style="font-weight:bold;color:${bal.balance >= 0 ? '#10b981' : '#ef4444'}">${bal.balance} kr</span></div>
@@ -1996,7 +1995,7 @@ class KronanPanel extends LitElement {
                             </div>
                             <div style="display:flex;gap:12px;font-size:0.85rem;background:#f8fafc;padding:8px;border-radius:8px;">
                               <div style="flex:1;">
-                                <span style="color:#64748b;display:block;">Totalt intjÃ¤nat:</span>
+                                <span style="color:#64748b;display:block;">Totalt intjänat:</span>
                                 <span style="font-weight:bold;color:#10b981;">+${bal.earned} kr</span>
                               </div>
                               <div style="flex:1;">
@@ -2014,7 +2013,7 @@ class KronanPanel extends LitElement {
           const u = this.users.find(usr => usr.id === p.userId);
           return html`
                             <div style="display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:6px 0;font-size:0.9rem;">
-                              <span style="color:var(--text-primary);">${u ? u.name : 'OkÃ¤nd'}</span>
+                              <span style="color:var(--text-primary);">${u ? u.name : 'Okänd'}</span>
                               <span style="color:#64748b;">${p.date.slice(0, 10)}</span>
                               <span style="font-weight:bold;color:#ef4444;">-${p.amount} kr</span>
                             </div>
@@ -2060,7 +2059,7 @@ class KronanPanel extends LitElement {
                           <div style="display:flex;flex-wrap:wrap;gap:6px;">
                             ${[...DAYS, 'market'].map(d => {
             const isSelected = this.selectedRecurringDays.includes(d);
-            const label = d === 'market' ? 'ðŸ›’ Marknad' : d.substring(0, 3);
+            const label = d === 'market' ? '🛒 Marknad' : d.substring(0, 3);
             return html`
                                 <button type="button" 
                                   @click="${() => {
@@ -2113,35 +2112,35 @@ class KronanPanel extends LitElement {
                           <input name="icon" placeholder="Ikon" style="width:50px;padding:8px 10px;border-radius:8px;border:1px solid #c084fc;font-size:1rem;" />
                         </div>
 
-                        <button type="submit" style="background:#8b5cf6;color:#fff;padding:10px 0;border-radius:8px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;">LÃ¤gg till Regel</button>
+                        <button type="submit" style="background:#8b5cf6;color:#fff;padding:10px 0;border-radius:8px;border:none;font-weight:bold;font-size:1rem;cursor:pointer;">Lägg till Regel</button>
                       </form>
                     </div>
 
                     <div style="margin-bottom:10px;">
                       <h4 style="font-size:0.9rem;font-weight:bold;color:#64748b;margin-bottom:6px;">Aktiva regler</h4>
-                      ${(this.recurringRules || []).length === 0 ? html`<span style="color:#64748b;font-size:0.95rem;">Inga regler sparade Ã¤n.</span>` : ''}
+                      ${(this.recurringRules || []).length === 0 ? html`<span style="color:#64748b;font-size:0.95rem;">Inga regler sparade än.</span>` : ''}
                       ${(this.recurringRules || []).map(r => html`
                         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid #f3e8ff;">
                           <div>
                             <span style="font-size:0.8rem;font-weight:bold;color:#8b5cf6;text-transform:uppercase;">
                               ${(() => {
               if (r.days && Array.isArray(r.days)) {
-                return r.days.map(d => d === 'market' ? 'ðŸ›’' : d.substring(0, 3)).join(', ');
+                return r.days.map(d => d === 'market' ? '🛒' : d.substring(0, 3)).join(', ');
               }
-              return r.day === 'market' ? 'ðŸ›’ Marknad' : r.day;
+              return r.day === 'market' ? '🛒 Marknad' : r.day;
             })()}
                             </span>
                             <div style="font-weight:500;color:#334155;">${r.icon} ${r.text} <span style="color:#94a3b8;font-size:0.9rem;">(${r.value} kr)</span></div>
-                            ${r.assignee ? html`<div style="font-size:0.8rem;color:#64748b;">ðŸ‘¤ ${r.assignee}</div>` : ''}
+                            ${r.assignee ? html`<div style="font-size:0.8rem;color:#64748b;">👤 ${r.assignee}</div>` : ''}
                           </div>
-                          <button @click="${() => this._deleteRecurringRule(r.id)}" style="background:none;border:none;color:#ef4444;font-size:1.2rem;cursor:pointer;">âœ•</button>
+                          <button @click="${() => this._deleteRecurringRule(r.id)}" style="background:none;border:none;color:#ef4444;font-size:1.2rem;cursor:pointer;">✕</button>
                         </div>
                       `)}
                     </div>
                   ` : this.moneyTab === 'data' ? html`
                     <div style="display:flex;flex-direction:column;gap:16px;">
                       <div style="background:#fef3c7;padding:18px;border-radius:14px;">
-                        <h4 style="font-weight:bold;color:#92400e;font-size:1rem;margin-bottom:10px;">ðŸ“ Mallar</h4>
+                        <h4 style="font-weight:bold;color:#92400e;font-size:1rem;margin-bottom:10px;">📁 Mallar</h4>
                         <p style="color:#92400e;font-size:0.9rem;margin-bottom:12px;">Spara nuvarande vecka som mall eller ladda en sparad mall.</p>
                         <button @click="${() => { this.showMoneyModal = false; this.showTemplateModal = true; }}" style="width:100%;background:#f59e0b;color:#fff;padding:12px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;">
                           Hantera Mallar
@@ -2149,7 +2148,7 @@ class KronanPanel extends LitElement {
                       </div>
                       
                       <div style="background:#dbeafe;padding:18px;border-radius:14px;">
-                        <h4 style="font-weight:bold;color:#1e40af;font-size:1rem;margin-bottom:10px;">ðŸ’¾ Exportera Data</h4>
+                        <h4 style="font-weight:bold;color:#1e40af;font-size:1rem;margin-bottom:10px;">💾 Exportera Data</h4>
                         <p style="color:#1e40af;font-size:0.9rem;margin-bottom:12px;">Spara en backup av all data till din dator.</p>
                         <button @click="${() => { this.showMoneyModal = false; this._exportData(); }}" style="width:100%;background:#3b82f6;color:#fff;padding:12px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;">
                           Exportera Backup
@@ -2157,7 +2156,7 @@ class KronanPanel extends LitElement {
                       </div>
                       
                       <div style="background:#dcfce7;padding:18px;border-radius:14px;">
-                        <h4 style="font-weight:bold;color:#166534;font-size:1rem;margin-bottom:10px;">ðŸ“¥ Importera Data</h4>
+                        <h4 style="font-weight:bold;color:#166534;font-size:1rem;margin-bottom:10px;">📥 Importera Data</h4>
                         <p style="color:#166534;font-size:0.9rem;margin-bottom:12px;">Ladda en tidigare sparad backup.</p>
                         <button @click="${() => { this.showMoneyModal = false; this._triggerImport(); }}" style="width:100%;background:#10b981;color:#fff;padding:12px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;">
                           Importera Backup
@@ -2205,7 +2204,7 @@ class KronanPanel extends LitElement {
             this.showPayoutModal = false;
             this.payoutUser = null;
           }
-        }}">BekrÃ¤fta</button>
+        }}">Bekräfta</button>
                 </div>
               </div>
             </div>
@@ -2217,7 +2216,7 @@ class KronanPanel extends LitElement {
               <div style="background:var(--bg-surface);border-radius:24px;box-shadow:0 8px 40px var(--shadow-color);padding:32px;min-width:320px;max-width:96vw;width:400px;display:flex;flex-direction:column;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
                   <h2 style="font-size:1.2rem;font-weight:bold;color:#6366f1;">Redigera person</h2>
-                  <button style="background:none;border:none;font-size:1.5rem;color:var(--text-secondary);cursor:pointer;" @click="${() => this.editingUser = null}">âœ•</button>
+                  <button style="background:none;border:none;font-size:1.5rem;color:var(--text-secondary);cursor:pointer;" @click="${() => this.editingUser = null}">✕</button>
                 </div>
                 <div style="margin-bottom:18px;">
                   <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Namn</label><br>
@@ -2230,7 +2229,7 @@ class KronanPanel extends LitElement {
                     .value="${this.editingUser.fixedAllowance}" @input="${e => this.editingUser = { ...this.editingUser, fixedAllowance: Number(e.target.value) }}">
                 </div>
                 <div style="margin-bottom:18px;">
-                  <label style="font-size:0.9rem;font-weight:600;color:#64748b;">FÃ¤rg</label><br>
+                  <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Färg</label><br>
                   <div style="display:flex;gap:10px;margin-top:6px;">
                     ${COLORS.map((col, idx) => html`
                       <button style="width:32px;height:32px;border-radius:50%;border:2px solid ${this.editingUser.defaultColorIndex === idx ? '#6366f1' : '#e5e7eb'};background:${col.bg};cursor:pointer;"
@@ -2263,7 +2262,7 @@ class KronanPanel extends LitElement {
               <div style="background:#fff;border-radius:24px;box-shadow:0 8px 40px #0003;padding:32px;min-width:320px;max-width:96vw;width:400px;display:flex;flex-direction:column;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
                   <h2 style="font-size:1.2rem;font-weight:bold;color:#10b981;">Redigera uppgift</h2>
-                  <button style="background:none;border:none;font-size:1.5rem;color:#64748b;cursor:pointer;" @click="${() => this.editingTask = null}">âœ•</button>
+                  <button style="background:none;border:none;font-size:1.5rem;color:#64748b;cursor:pointer;" @click="${() => this.editingTask = null}">✕</button>
                 </div>
                 <div style="margin-bottom:18px;">
                   <label style="font-size:0.9rem;font-weight:600;color:#64748b;">Uppgift</label><br>
@@ -2321,8 +2320,8 @@ class KronanPanel extends LitElement {
             <div style="position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
               <div style="background:#fff;border-radius:24px;box-shadow:0 8px 40px #0003;padding:32px;min-width:320px;max-width:96vw;width:400px;display:flex;flex-direction:column;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-                  <h2 style="font-size:1.2rem;font-weight:bold;color:#6366f1;">LÃ¤gg till uppgift</h2>
-                  <button style="background:none;border:none;font-size:1.5rem;color:#64748b;cursor:pointer;" @click="${() => this.showAddTaskModal = false}">âœ•</button>
+                  <h2 style="font-size:1.2rem;font-weight:bold;color:#6366f1;">Lägg till uppgift</h2>
+                  <button style="background:none;border:none;font-size:1.5rem;color:#64748b;cursor:pointer;" @click="${() => this.showAddTaskModal = false}">✕</button>
                 </div>
 
                 ${this.selectedDay !== 'market' ? html`
@@ -2390,7 +2389,7 @@ class KronanPanel extends LitElement {
                     @click="${() => this.showAddTaskModal = false}">Avbryt</button>
                   <button style="flex:1;background:#6366f1;color:#fff;padding:10px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;"
                     @click="${() => this._confirmAddTask()}"
-                    ?disabled="${!this.selectedTaskFromLibrary}">LÃ¤gg till</button>
+                    ?disabled="${!this.selectedTaskFromLibrary}">Lägg till</button>
                 </div>
               </div>
             </div>
@@ -2402,7 +2401,7 @@ class KronanPanel extends LitElement {
               <div style="background:#fff;border-radius:24px;box-shadow:0 8px 40px #0003;padding:32px;min-width:320px;max-width:96vw;width:400px;display:flex;flex-direction:column;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
                   <h2 style="font-size:1.2rem;font-weight:bold;color:#6366f1;">Flytta eller kopiera?</h2>
-                  <button style="background:none;border:none;font-size:1.5rem;color:#64748b;cursor:pointer;" @click="${() => { this.showMoveCopyModal = false; this.moveCopyData = null; this.draggedItem = null; }}">âœ•</button>
+                  <button style="background:none;border:none;font-size:1.5rem;color:#64748b;cursor:pointer;" @click="${() => { this.showMoveCopyModal = false; this.moveCopyData = null; this.draggedItem = null; }}">✕</button>
                 </div>
                 
                 <div style="text-align:center;margin-bottom:24px;">
@@ -2410,7 +2409,7 @@ class KronanPanel extends LitElement {
                     <strong>"${this.moveCopyData.item.icon ? this.moveCopyData.item.icon + ' ' : ''}${this.moveCopyData.item.text}"</strong>
                   </div>
                   <div style="font-size:0.9rem;color:#64748b;">
-                    FrÃ¥n <strong>${this.moveCopyData.sourceDay}</strong> till <strong>${this.moveCopyData.targetDay}</strong>
+                    Från <strong>${this.moveCopyData.sourceDay}</strong> till <strong>${this.moveCopyData.targetDay}</strong>
                   </div>
                 </div>
                 
@@ -2418,7 +2417,7 @@ class KronanPanel extends LitElement {
                   <button style="background:#10b981;color:#fff;padding:14px 0;border:none;border-radius:12px;font-weight:bold;font-size:1.1rem;cursor:pointer;"
                     @click="${() => this._handleCopyTask()}">
                     <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-                      <span>ðŸ“‹ Kopiera</span>
+                      <span>📋 Kopiera</span>
                     </div>
                     <div style="font-size:0.8rem;font-weight:normal;opacity:0.9;">(Uppgiften finns kvar på ${this.moveCopyData.sourceDay})</div>
                   </button>
@@ -2426,7 +2425,7 @@ class KronanPanel extends LitElement {
                   <button style="background:#6366f1;color:#fff;padding:14px 0;border:none;border-radius:12px;font-weight:bold;font-size:1.1rem;cursor:pointer;"
                     @click="${() => this._handleMoveTask()}">
                     <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-                      <span>âž¡ï¸ Flytta</span>
+                      <span>➡️ Flytta</span>
                     </div>
                     <div style="font-size:0.8rem;font-weight:normal;opacity:0.9;">(Uppgiften flyttas från ${this.moveCopyData.sourceDay})</div>
                   </button>
@@ -2448,7 +2447,7 @@ class KronanPanel extends LitElement {
               @drop="${e => this._onDrop(e, 'market')}"
               @dragover="${this._onDragOver}">
               <div class="day-header" style="color:#64748b;">
-                <span>ðŸ›’ Marknad</span>
+                <span>🛒 Marknad</span>
                 <button class="add-btn" style="background:#94a3b8;" @click="${() => this._addTask('market')}">+</button>
               </div>
               <div>
@@ -2488,7 +2487,7 @@ class KronanPanel extends LitElement {
                       ${item.assignee ? html`<div style="font-size:0.95rem;font-weight:bold;color:#334155;">
                         ${(() => {
             const u = this.users.find(user => user.name === item.assignee);
-            return u && u.icon ? u.icon + ' ' : 'ðŸ‘¤ ';
+            return u && u.icon ? u.icon + ' ' : '👤 ';
           })()}${item.assignee}</div>` : html`<div></div>`}
                       ${item.value ? html`<span style="background:#10b981;color:#fff;padding:2px 8px;border-radius:6px;font-size:0.9rem;font-weight:bold;">${item.value} kr</span>` : html`<div></div>`}
                     </div>
@@ -2529,7 +2528,7 @@ class KronanPanel extends LitElement {
                   </div>
                 `;
           })}
-              ${Object.keys(totals).length === 0 ? html`<span style="color:#64748b;font-size:0.95rem;">LÃ¤gg till personer och uppgifter fÃ¶r att se summering.</span>` : ''}
+              ${Object.keys(totals).length === 0 ? html`<span style="color:#64748b;font-size:0.95rem;">Lägg till personer och uppgifter för att se summering.</span>` : ''}
             </div>
             </div>
             <div style="font-size:0.8rem;color:#64748b;text-align:right;">
