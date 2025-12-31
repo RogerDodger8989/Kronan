@@ -1426,15 +1426,16 @@ class KronanPanel extends LitElement {
 
   _prevWeek() {
     this._persistCurrentView(); // Spara undan det vi gjort
-    this.currentDate.setDate(this.currentDate.getDate() - 7);
-    this.currentDate = new Date(this.currentDate); // Trigga uppdatering
+    // Use timestamp math to avoid setDate issues around month/year boundaries
+    const time = this.currentDate.getTime();
+    this.currentDate = new Date(time - (7 * 24 * 60 * 60 * 1000));
     this._refreshView();
   }
 
   _nextWeek() {
     this._persistCurrentView();
-    this.currentDate.setDate(this.currentDate.getDate() + 7);
-    this.currentDate = new Date(this.currentDate);
+    const time = this.currentDate.getTime();
+    this.currentDate = new Date(time + (7 * 24 * 60 * 60 * 1000));
     this._refreshView();
   }
 
@@ -1849,7 +1850,7 @@ class KronanPanel extends LitElement {
         : ''}
                 </h1>
                 <p style="margin:0;color:var(--text-secondary);font-size:0.95rem;font-weight:500;">
-                  ${getWeekRange(this.currentDate)} <span style="font-size:0.7rem;opacity:0.5;">(${this.currentDate.toISOString().slice(0, 10)} | ID: ${getWeekIdentifier(this.currentDate)})</span>
+                  ${getWeekRange(this.currentDate)}
                 </p>
               </div>
 
