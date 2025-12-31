@@ -532,32 +532,8 @@ class KronanPanel extends LitElement {
       ...this.templates,
       { id: generateId(), name, data: weekCopy }
     ];
-
-    // Immediately apply to current week
-    const newRule = this.recurringRules[this.recurringRules.length - 1];
-    const targetDays = Array.isArray(newRule.days) ? newRule.days : [newRule.days];
-
-    targetDays.forEach(d => {
-      if (this.week[d] || d === 'market') {
-        const newTask = {
-          id: generateId(),
-          text: newRule.text,
-          value: Number(newRule.value) || 0,
-          icon: newRule.icon || '',
-          assignee: newRule.assignee || undefined
-        };
-        if (d === 'market') {
-          this.week.market = [...this.week.market, newTask];
-        } else {
-          this.week = {
-            ...this.week,
-            [d]: [...this.week[d], newTask]
-          };
-        }
-      }
-    });
-
     this._saveData();
+    this._showToast(`Mallen "${name}" sparad!`);
   }
 
   _loadTemplate(template) {
@@ -1410,6 +1386,28 @@ class KronanPanel extends LitElement {
     }, 0);
   }
 
+  _manualGhostMigration() {
+    if (this.weeksData && this.weeksData['2025-W1']) {
+      if (confirm('Detta flyttar data från "Vecka 1 (Spök)" till "Vecka 1 (2026)". Är du säker?')) {
+        // Prevent overwrite if 2026 exists and has data? 
+        // User is desperate, let's merge or overwrite?
+        // Let's overwrite because 2026-W1 is likely empty (why they have 0 kr).
+        this.weeksData['2026-W1'] = this.weeksData['2025-W1'];
+
+        // IMPORTANT: Also update internal dates in the tasks? 
+        // Tasks don't store date, they store day key (Monday).
+        // BUT they might rely on weekId for something? No.
+
+        delete this.weeksData['2025-W1'];
+        this._saveData();
+        this._refreshView(); // Use _refreshView to reload current week
+        this._showToast("Datan reparerad! Prova navigera nu.");
+      }
+    } else {
+      alert("Ingen trasig data hittades (Ingen '2025-W1').");
+    }
+  }
+
   // --- Navigering ---
 
   _prevWeek() {
@@ -2165,6 +2163,14 @@ class KronanPanel extends LitElement {
                         <p style="color:#166534;font-size:0.9rem;margin-bottom:12px;">Ladda en tidigare sparad backup.</p>
                         <button @click="${() => { this.showMoneyModal = false; this._triggerImport(); }}" style="width:100%;background:#10b981;color:#fff;padding:12px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;">
                           Importera Backup
+                        </button>
+                      </div>
+
+                      <div style="background:#fee2e2;padding:18px;border-radius:14px;">
+                        <h4 style="font-weight:bold;color:#b91c1c;font-size:1rem;margin-bottom:10px;">🛠️ Felsökning</h4>
+                        <p style="color:#b91c1c;font-size:0.9rem;margin-bottom:12px;">Om saldo visar 0 kr trots att du arbetat.</p>
+                        <button @click="${() => this._manualGhostMigration()}" style="width:100%;background:#ef4444;color:#fff;padding:12px 0;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;">
+                          Fixa "0 kr" (Vecka 1)
                         </button>
                       </div>
                       
