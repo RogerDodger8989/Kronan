@@ -454,6 +454,22 @@ class KronanPanel extends LitElement {
     this.fileInput.style.display = 'none';
     this.fileInput.addEventListener('change', e => this._importData(e));
     this.shadowRoot.appendChild(this.fileInput);
+
+    // MIGRATION FIX: Move '2025-W1' (Ghost) to '2026-W1' (Real) if present
+    // This fixes "Missing Data" and "0 kr Saldo" for users affected by the Year-switch bug.
+    setTimeout(() => {
+      if (this.weeksData && this.weeksData['2025-W1']) {
+        console.log("Migrating Ghost Week 2025-W1 to 2026-W1...");
+        // Only overwrite if 2026-W1 is empty or doesn't exist
+        if (!this.weeksData['2026-W1']) {
+          this.weeksData['2026-W1'] = this.weeksData['2025-W1'];
+          delete this.weeksData['2025-W1'];
+          this._saveData();
+          this.requestUpdate();
+          this._showToast("Databasen uppdaterad (Vecka 1 fixad).");
+        }
+      }
+    }, 1000);
   }
 
   _exportData() {
