@@ -43,9 +43,16 @@ function getWeekNumber(d) {
   return weekNo;
 }
 
+function getISOWeekYear(d) {
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  return d.getUTCFullYear();
+}
+
 function getWeekIdentifier(d) {
   const week = getWeekNumber(d);
-  const year = d.getFullYear(); // Uses local year, might mismatch near new year but good enough for simple ID
+  const year = getISOWeekYear(d);
+  // Returns e.g. "2026-W1" for Dec 29 2025. Consistent!
   return `${year}-W${week}`;
 }
 
