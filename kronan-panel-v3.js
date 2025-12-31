@@ -235,30 +235,37 @@ class KronanPanel extends LitElement {
       font-size: 1.1rem;
       cursor: pointer;
       margin-left: 4px;
-      margin-left: 4px;
     }
 
     .toast {
       position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%);
+      top: 20px;
+      right: 20px;
+      bottom: auto;
+      left: auto;
+      transform: none;
       background: #1e293b;
       color: #fff;
-      padding: 12px 24px;
+      padding: 16px 24px;
       border-radius: 12px;
-      z-index: 10000; /* Extremely high to beat modals */
+      z-index: 100001; /* Higher than everything */
+      pointer-events: auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
       display: flex;
-      align-items: center;
-      gap: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      flex-direction: column;
+      gap: 12px;
+      min-width: 300px;
+      animation: slideUp 0.3s ease;
+    }
+    .toast span {
       font-size: 1rem;
       font-weight: 500;
-      animation: slideUp 0.3s ease;
     }
     .toast .actions {
       display: flex;
-      gap: 8px;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 4px;
     }
     .toast button {
       background: #475569;
@@ -998,9 +1005,12 @@ class KronanPanel extends LitElement {
           let shouldAddAllowance = true;
           if (user.createdAt) {
             const weekDate = this._getDateFromWeekId(weekId);
-            // SAFETY FIX 1: STRICT check. If week started BEFORE user creation (minus 1 week buffer), ignore it.
-            // Buffer increased to 7 days to ensure users created mid-week still get paid for THAT week.
-            if (!weekDate || (weekDate < user.createdAt - 604800000)) {
+            // SAFETY FIX 1: STRICT check. If week started BEFORE user creation (minus 7 days buffer), ignore it.
+            // BUT: ALWAYS allow the CURRENT active week to ensure "Created Today, Pay Today" works.
+            const currentWeekId = getWeekIdentifier(new Date());
+            if (weekId === currentWeekId) {
+              shouldAddAllowance = true; // Force allow for current week
+            } else if (!weekDate || (weekDate < user.createdAt - 604800000)) {
               shouldAddAllowance = false;
             }
             // SAFETY FIX 2: NO FUTURES. If week is in the future, no allowance yet.
